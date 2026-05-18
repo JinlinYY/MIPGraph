@@ -1,6 +1,6 @@
 # MIPGraph
 
-Official implementation for the project accompanying the manuscript:
+Implementation for the project accompanying the manuscript:
 
 ```text
 A Mechanism-Factorized Ion-Pair Graph Learning Framework for Thermophysical Property Prediction of Ionic Liquids
@@ -14,8 +14,6 @@ This repository provides a complete research codebase for sparse-label multi-pro
 - SurfaceTension
 - ThermalConductivity
 - Viscosity
-
-The manuscript has not been submitted yet. Please treat the current repository as a research-release version.
 
 ## Overview
 
@@ -50,10 +48,8 @@ Sparse-Label-Prediction/
 
 - `data/`: data preparation notes and scripts for merging raw property files, completing SMILES, and optionally filling missing properties from ILThermoPy.
 - `il_property_prediction/`: model preprocessing, graph construction, training, fine-tuning, evaluation, and visualization.
-- `il_property_prediction/src/`: reusable modules for chemistry, datasets, models, losses, metrics, and plotting.
-- `il_property_prediction/scripts/`: command-line entry points.
 
-Generated artifacts such as processed datasets, graph caches, checkpoints, predictions, figures, and metrics are intentionally excluded from version control.
+
 
 ## Installation
 
@@ -162,11 +158,4 @@ Graph visualizations are saved under:
 ```text
 il_property_prediction/outputs/graphvis
 ```
-
-## Important Notes
-
-- The default split is IL-level, not row-level, to avoid structural leakage.
-- Cross-ion interaction edges are deterministic virtual edges and should not be interpreted as experimentally measured ion-pair geometries.
-- The thermodynamic decoder uses physics-inspired response functions plus neural residuals.
-- `ErrorValue` columns are used as optional error-aware training weights, not as prediction targets.
 
