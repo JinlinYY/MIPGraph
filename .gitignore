@@ -34,8 +34,10 @@ data/Smiles-TO-iUpac-Translator-main/
 
 # Large generated outputs and reports
 outputs/
-experiments/
-web/
+experiments/*
+!experiments/README.md
+web/*
+!web/README.md
 *.pt
 *.pth
 *.ckpt
