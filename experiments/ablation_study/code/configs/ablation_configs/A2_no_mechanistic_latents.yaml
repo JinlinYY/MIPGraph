@@ -1,0 +1,140 @@
+data:
+  raw_path: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\data\\processed\\ionic_liquid_6_properties_values_errors_ilthermo_strict.xlsx"
+  sheet_name: Merged
+  processed_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\
+    \uFF08\u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    data\\processed"
+  clean_csv: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    data\\processed\\il_multiprop_clean.csv"
+  arrays_path: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    data\\processed\\il_multiprop_arrays.npz"
+  graph_cache_path: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\
+    \uFF08\u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    data\\processed\\graph_cache.pt"
+  failed_smiles_path: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\
+    \u6D4B\uFF08\u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    data\\processed\\failed_smiles.csv"
+  split_type: il_level
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+properties:
+  names:
+  - Density
+  - ElectricalConductivity
+  - HeatCapacity
+  - SurfaceTension
+  - ThermalConductivity
+  - Viscosity
+  log_transform:
+    Density: true
+    ElectricalConductivity: true
+    HeatCapacity: true
+    SurfaceTension: true
+    ThermalConductivity: true
+    Viscosity: true
+chem:
+  use_3d: true
+  conformer_method: ETKDGv3
+  optimize_method: UFF
+  cross_ion_mode: deterministic_2d
+  cross_ion_cutoff: 5.0
+  add_virtual_global_edges: true
+  max_conformer_attempts: 20
+  seed: 42
+model:
+  name: 3D-IPTNet
+  hidden_dim: 256
+  latent_dim: 256
+  num_layers: 4
+  dropout: 0.15
+  pooling: attention
+  graph_conv: GINE
+  use_3d_distance: true
+  use_cross_ion_edges: true
+  use_interaction_encoder: true
+  use_mechanistic_latent_heads: false
+  latent_names:
+  - packing
+  - cohesion
+  - transport
+  - thermal
+  use_property_latent_gating: true
+  use_condition_film: true
+  use_structured_decoder: true
+  use_neural_residual: true
+  residual_scale: 0.1
+  use_property_coupling: true
+  atom_feature_dim: 45
+  edge_feature_dim: 12
+  use_e3_invariant_geometry: true
+  rbf_num_centers: 32
+  rbf_cutoff: 6.0
+  use_global_descriptors: true
+  global_descriptor_dim: 56
+training:
+  batch_size: 128
+  epochs: 300
+  lr: 0.0005
+  weight_decay: 1.0e-05
+  patience: 40
+  gradient_clip_norm: 5.0
+  device: auto
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+  use_amp: true
+  validate_every: 2
+  monitor_metric: macro_MAE
+  monitor_mode: min
+  seed: 42
+loss:
+  type: masked_weighted_mse
+  use_error_weight: true
+  balance_properties: false
+  property_loss_weights:
+    Density: 1.0
+    ElectricalConductivity: 2.0
+    HeatCapacity: 1.0
+    SurfaceTension: 2.0
+    ThermalConductivity: 1.5
+    Viscosity: 2.0
+  high_value_weighting: {}
+  error_weight_clip_min: 0.1
+  error_weight_clip_max: 10.0
+  use_residual_penalty: false
+  residual_penalty_weight: 0.0
+  use_latent_orthogonality: false
+  latent_orthogonality_weight: 0.0
+  use_gate_entropy_penalty: false
+  gate_entropy_weight: 0.0
+  use_surface_tension_monotonic_reg: false
+  surface_tension_monotonic_weight: 0.0
+  use_density_monotonic_reg: false
+  density_monotonic_weight: 0.0
+outputs:
+  run_name: default
+  output_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents"
+  checkpoint_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\
+    \uFF08\u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents\\checkpoints"
+  log_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents\\logs"
+  metric_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents\\metrics"
+  prediction_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\
+    \uFF08\u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents\\predictions"
+  figure_dir: "E:\\Study\\\u79BB\u5B50\u6DB2\u4F53\u591A\u6027\u8D28\u9884\u6D4B\uFF08\
+    \u4EFB\u52A1\u5206\u5DE5\uFF09\\Sparse-Label-Prediction\\il_property_prediction\\\
+    outputs\\ablation\\A2_no_mechanistic_latents\\figures"
+  ablation_dir: outputs/ablation
