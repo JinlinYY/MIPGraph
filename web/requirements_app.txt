@@ -1,0 +1,20 @@
+# MIPGraph UI — runtime dependencies
+# Install with:  pip install -r requirements_app.txt
+
+# Web server
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# Scientific computing
+numpy>=1.24.0
+
+# Deep learning (CPU build is sufficient; install GPU build manually if needed)
+# See https://pytorch.org/get-started/locally/ for GPU / CUDA versions
+torch>=2.0.0
+
+# Graph neural network
+torch-geometric>=2.4.0
+
+# Chemistry (SMILES parsing, 3D conformer generation)
+rdkit>=2023.3.0

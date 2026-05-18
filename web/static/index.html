@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ionic Liquid Property Predictor · MIPGraph</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+
+<!-- ══ Navbar ══ -->
+<header class="navbar">
+  <div class="container navbar-inner">
+    <div class="navbar-brand">
+      <svg class="brand-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <polygon points="12,2 21.5,7 21.5,17 12,22 2.5,17 2.5,7"
+          stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <polygon points="12,7 17,9.75 17,15.25 12,18 7,15.25 7,9.75"
+          fill="currentColor" opacity="0.2"/>
+      </svg>
+      <span class="brand-name">IL Property Predictor</span>
+    </div>
+    <nav class="navbar-nav">
+      <a href="/" class="nav-link active">Predict</a>
+    </nav>
+    <div id="statusBadge" class="status-dot">
+      <span class="status-indicator"></span>
+      <span class="status-text">Checking…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══ Hero ══ -->
+<section class="hero">
+  <div class="hero-dots" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <div class="hero-text">
+      <h1 class="hero-title">Ionic Liquid <em>Thermophysical</em> Property Predictor</h1>
+      <p class="hero-sub">
+        Powered by <strong>MIPGraph</strong>, a graph neural network model.
+        Input cation–anion SMILES and operating conditions to instantly obtain
+        six thermophysical property predictions.
+      </p>
+      <div class="hero-tags">
+        <span class="hero-tag">No Database</span>
+        <span class="hero-tag">Local Inference</span>
+        <span class="hero-tag">6 Properties</span>
+      </div>
+    </div>
+    <div class="hero-graphic" aria-hidden="true">
+      <svg class="molecule-svg" viewBox="0 0 310 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="ng1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#93c5fd"/><stop offset="100%" stop-color="#3b82f6"/></radialGradient>
+          <radialGradient id="ng2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#67e8f9"/><stop offset="100%" stop-color="#06b6d4"/></radialGradient>
+          <radialGradient id="ng3" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c3aed"/></radialGradient>
+        </defs>
+        <line x1="138" y1="90"  x2="162" y2="70"  stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="162" y1="70"  x2="190" y2="80"  stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="190" y1="80"  x2="188" y2="112" stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="188" y1="112" x2="160" y2="122" stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="160" y1="122" x2="138" y2="90"  stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="138" y1="90"  x2="110" y2="78"  stroke="rgba(255,255,255,0.24)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="110" y1="78"  x2="84"  y2="88"  stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="84"  y1="88"  x2="60"  y2="76"  stroke="rgba(255,255,255,0.20)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="60"  y1="76"  x2="36"  y2="86"  stroke="rgba(255,255,255,0.14)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="162" y1="70"  x2="162" y2="42"  stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="190" y1="80"  x2="220" y2="68"  stroke="rgba(255,255,255,0.26)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="220" y1="68"  x2="240" y2="50"  stroke="rgba(255,255,255,0.20)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="220" y1="68"  x2="244" y2="84"  stroke="rgba(255,255,255,0.20)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="220" y1="68"  x2="252" y2="68"  stroke="rgba(255,255,255,0.26)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="252" y1="68"  x2="278" y2="62"  stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="278" y1="62"  x2="296" y2="46"  stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="278" y1="62"  x2="298" y2="76"  stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="138" cy="90"  r="22" fill="rgba(59,130,246,0.09)"  class="halo h1"/>
+        <circle cx="190" cy="80"  r="20" fill="rgba(6,182,212,0.09)"   class="halo h2"/>
+        <circle cx="220" cy="68"  r="17" fill="rgba(139,92,246,0.09)"  class="halo h3"/>
+        <circle cx="36"  cy="86"  r="3.5" fill="rgba(255,255,255,0.42)"/>
+        <circle cx="60"  cy="76"  r="4.5" fill="rgba(255,255,255,0.52)"/>
+        <circle cx="84"  cy="88"  r="5"   fill="rgba(255,255,255,0.60)"/>
+        <circle cx="110" cy="78"  r="5"   fill="rgba(255,255,255,0.65)"/>
+        <circle cx="162" cy="42"  r="3.5" fill="rgba(255,255,255,0.48)"/>
+        <circle cx="162" cy="70"  r="5.5" fill="rgba(255,255,255,0.72)"/>
+        <circle cx="160" cy="122" r="4.5" fill="rgba(255,255,255,0.58)"/>
+        <circle cx="188" cy="112" r="5"   fill="rgba(255,255,255,0.62)"/>
+        <circle cx="240" cy="50"  r="4"   fill="rgba(255,255,255,0.52)"/>
+        <circle cx="244" cy="84"  r="4"   fill="rgba(255,255,255,0.52)"/>
+        <circle cx="252" cy="68"  r="5"   fill="rgba(255,255,255,0.64)"/>
+        <circle cx="296" cy="46"  r="3"   fill="rgba(255,255,255,0.42)"/>
+        <circle cx="298" cy="76"  r="3"   fill="rgba(255,255,255,0.42)"/>
+        <circle cx="138" cy="90"  r="9"   fill="url(#ng1)" class="key-node n1"/>
+        <circle cx="190" cy="80"  r="9"   fill="url(#ng2)" class="key-node n2"/>
+        <circle cx="220" cy="68"  r="7.5" fill="url(#ng3)" class="key-node n3"/>
+        <circle cx="278" cy="62"  r="6.5" fill="url(#ng2)" class="key-node n4" opacity="0.85"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Workspace ══ -->
+<div class="workspace">
+  <div class="container workspace-grid">
+
+    <!-- Left: Input -->
+    <aside class="panel-left">
+      <div class="input-card">
+        <div class="form-area">
+          <div class="form-heading">Parameters</div>
+          <form id="f" autocomplete="off" novalidate>
+            <div class="field">
+              <label class="label" for="smiles">
+                Ionic Liquid SMILES
+                <span class="label-hint">Connect cation &amp; anion with a period <code>.</code></span>
+              </label>
+              <textarea id="smiles" class="input input-mono" rows="5" required spellcheck="false"
+                placeholder="CCCC[n+]1ccn(C)c1.O=S(=O)([N-]S(=O)(=O)C(F)(F)F)C(F)(F)F"></textarea>
+            </div>
+            <div class="tp-row">
+              <div class="field">
+                <label class="label" for="temp">Temperature <span class="label-unit">K</span></label>
+                <input id="temp" class="input" type="number" step="0.01" value="298.15" required />
+              </div>
+              <div class="field">
+                <label class="label" for="press">Pressure <span class="label-unit">kPa</span></label>
+                <input id="press" class="input" type="number" step="0.001" value="101.325" />
+              </div>
+            </div>
+            <button type="submit" class="btn-predict" id="go">
+              <span id="btnLabel">Predict</span>
+              <span id="spin" class="hidden spin-wrap">
+                <svg class="spin-svg" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5"
+                    stroke-dasharray="40" stroke-dashoffset="30" stroke-linecap="round"/>
+                </svg>
+                Computing…
+              </span>
+            </button>
+          </form>
+        </div>
+
+        <div class="samples-section">
+          <div class="samples-heading">Quick Examples</div>
+          <div id="chips" class="sample-list"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right: Results -->
+    <section class="panel-right">
+      <p id="err" class="error-bar" role="alert"></p>
+
+      <div id="emptyState" class="empty-state">
+        <svg class="empty-svg" viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="36" stroke="#dde3ee" stroke-width="1.5"/>
+          <circle cx="40" cy="40" r="20" stroke="#dde3ee" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <circle cx="40" cy="40" r="6"  fill="#dde3ee"/>
+          <line x1="40" y1="4"  x2="40" y2="15" stroke="#dde3ee" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="40" y1="65" x2="40" y2="76" stroke="#dde3ee" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="4"  y1="40" x2="15" y2="40" stroke="#dde3ee" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="65" y1="40" x2="76" y2="40" stroke="#dde3ee" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <p class="empty-title">No prediction yet</p>
+        <p class="empty-desc">Enter a SMILES string and conditions on the left, then click Predict.</p>
+      </div>
+
+      <div id="out" class="hidden">
+        <div class="result-meta-bar">
+          <p id="meta" class="result-meta"></p>
+        </div>
+        <div id="grid" class="result-grid"></div>
+
+        <div id="radarCard" class="radar-card">
+          <div class="radar-card-header">
+            <div>
+              <span class="radar-card-title">Property Fingerprint</span>
+              <span class="radar-card-sub">Normalized to typical ionic liquid ranges</span>
+            </div>
+            <button type="button" class="copy-all-btn" id="copyAll">
+              <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+                <rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M3 11V3a1 1 0 0 1 1-1h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              Copy All
+            </button>
+          </div>
+          <svg id="radarSvg" class="radar-svg" viewBox="0 0 360 310"
+               xmlns="http://www.w3.org/2000/svg" aria-label="Property fingerprint radar"></svg>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ══ About ══ -->
+<section class="about-section">
+  <div class="container about-grid">
+    <div class="about-item">
+      <div class="about-icon">🧪</div>
+      <h4>Benchmark: [BMIM][NTf₂]</h4>
+      <p>1-Butyl-3-methylimidazolium bis(trifluoromethylsulfonyl)imide is the most widely referenced
+        ionic liquid standard. The NIST ILThermo database contains comprehensive thermophysical data
+        at 298 K and atmospheric pressure, making it an ideal model validation benchmark.</p>
+    </div>
+    <div class="about-item">
+      <div class="about-icon">⚗️</div>
+      <h4>Temperature &amp; Pressure</h4>
+      <p>The model takes SMILES + T (K) + P (kPa) as inputs.
+        Conditions must be set manually to match target literature or experimental values.
+        Default: 298.15 K / 101.325 kPa (ambient standard state).</p>
+    </div>
+    <div class="about-item">
+      <div class="about-icon">📐</div>
+      <h4>About MIPGraph</h4>
+      <p>MIPGraph encodes cation–anion 3D graphs via a graph neural network and outputs
+        six thermophysical property predictions through multi-task heads.
+        Results are for academic reference; please cite the model and applicable training data range.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Footer ══ -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <span>MIPGraph · Ionic Liquid Thermophysical Property Prediction Platform</span>
+  </div>
+</footer>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>
