@@ -1,0 +1,4 @@
+﻿split,rows,unique_il_smiles,unique_cations,unique_anions,cation_families,anion_families,Density_labels,ElectricalConductivity_labels,HeatCapacity_labels,SurfaceTension_labels,ThermalConductivity_labels,Viscosity_labels
+train,32015,912,349,120,ammonium|benzimidazolium|cholinium|imidazolium|phosphonium|pyridinium,carbonate|carboxylate|fluoroborate|fluorophosphate|halide|halometalate|other_anion|phosphate_phosphinate|sulfate_sulfonate|tfsamide,15144,4310,8877,4356,657,9401
+val,1232,63,34,19,ammonium|imidazolium|phosphonium|pyridinium,heterocyclic|nitrate,889,77,263,27,14,572
+test,4309,150,57,26,ammonium|imidazolium|phosphonium|pyridinium,amino_acid|cyanamide_cyanocarbon|perchlorate,1841,620,720,771,163,2032
