@@ -17,7 +17,6 @@ env/
 .selenium_leskoff_profile/
 
 # Generated model/data artifacts
-il_property_prediction/outputs/
 il_property_prediction/data/processed/
 il_property_prediction/data/raw/
 il_property_prediction/data/cache/
@@ -41,6 +40,8 @@ web/*
 *.pt
 *.pth
 *.ckpt
+!il_property_prediction/outputs/
+!il_property_prediction/outputs/**
 
 # Manuscript drafts or local documents
 *.pdf

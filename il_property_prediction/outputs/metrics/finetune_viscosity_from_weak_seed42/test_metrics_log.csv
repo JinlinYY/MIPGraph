@@ -1,0 +1,8 @@
+﻿property,log_MAE,log_RMSE,log_R2
+Density,0.0104,0.0165,0.9863
+ElectricalConductivity,0.2237,0.4897,0.9132
+HeatCapacity,0.0324,0.0455,0.9789
+SurfaceTension,0.0402,0.0644,0.9156
+ThermalConductivity,0.0221,0.0300,0.9686
+Viscosity,0.2428,0.5351,0.8722
+Average,0.0953,0.1969,0.9391

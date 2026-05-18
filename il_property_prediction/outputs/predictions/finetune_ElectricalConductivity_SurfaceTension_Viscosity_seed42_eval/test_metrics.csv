@@ -1,0 +1,8 @@
+﻿property,MAE,RMSE,R2
+Density,12.0706,20.7786,0.9854
+ElectricalConductivity,0.2319,0.5463,0.8244
+HeatCapacity,16.7128,26.1197,0.9787
+SurfaceTension,0.0016,0.0026,0.9012
+ThermalConductivity,0.0042,0.0065,0.9458
+Viscosity,0.1281,0.8247,0.7176
+Average,4.8582,8.0464,0.8922
