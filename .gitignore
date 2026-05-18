@@ -16,12 +16,6 @@ env/
 # Local browser/session profiles
 .selenium_leskoff_profile/
 
-# Generated model/data artifacts
-il_property_prediction/data/processed/
-il_property_prediction/data/raw/
-il_property_prediction/data/cache/
-il_property_prediction/data/data/
-
 # Root data products and downloaded databases
 data/raw/
 data/processed/
@@ -42,6 +36,8 @@ web/*
 *.ckpt
 !il_property_prediction/outputs/
 !il_property_prediction/outputs/**
+!il_property_prediction/data/
+!il_property_prediction/data/**
 
 # Manuscript drafts or local documents
 *.pdf

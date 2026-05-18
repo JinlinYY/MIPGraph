@@ -1,0 +1,115 @@
+{
+  "raw_rows": 37556,
+  "total_samples": 37556,
+  "unique_ils": 1125,
+  "properties": {
+    "Density": {
+      "label_count": 17855,
+      "missing_rate": 0.5245766322292044,
+      "ActualValue": {
+        "min": 780.0,
+        "max": 2150.0,
+        "mean": 1217.182564024003,
+        "median": 1195.8
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 300.0,
+        "mean": 3.830679490164389,
+        "median": 2.1
+      }
+    },
+    "ElectricalConductivity": {
+      "label_count": 4842,
+      "missing_rate": 0.8710725316860155,
+      "ActualValue": {
+        "min": 3e-14,
+        "max": 14.54,
+        "mean": 1.0303796104274465,
+        "median": 0.44
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 1.4,
+        "mean": 0.040368402126739346,
+        "median": 0.014
+      }
+    },
+    "HeatCapacity": {
+      "label_count": 9794,
+      "missing_rate": 0.7392161039514324,
+      "ActualValue": {
+        "min": 93.0,
+        "max": 2040.0,
+        "mean": 551.3526678816611,
+        "median": 495.9
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 420.0,
+        "mean": 26.2455170148924,
+        "median": 14.0
+      }
+    },
+    "SurfaceTension": {
+      "label_count": 5154,
+      "missing_rate": 0.8627649376930451,
+      "ActualValue": {
+        "min": 0.0155,
+        "max": 0.068175,
+        "mean": 0.03856725702644271,
+        "median": 0.037309999999999996
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 0.01,
+        "mean": 0.000852404821959828,
+        "median": 0.00055
+      }
+    },
+    "ThermalConductivity": {
+      "label_count": 812,
+      "missing_rate": 0.9783789540952178,
+      "ActualValue": {
+        "min": 0.094,
+        "max": 0.255,
+        "mean": 0.15907691502463053,
+        "median": 0.159
+      },
+      "ErrorValue": {
+        "min": 0.00085,
+        "max": 0.02,
+        "mean": 0.009018399014778324,
+        "median": 0.01
+      }
+    },
+    "Viscosity": {
+      "label_count": 11720,
+      "missing_rate": 0.6879326871871339,
+      "ActualValue": {
+        "min": 0.000841,
+        "max": 220.0,
+        "mean": 0.5835751724847498,
+        "median": 0.053
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 240.0,
+        "mean": 0.1228761196608561,
+        "median": 0.002
+      }
+    }
+  },
+  "Temperature_K": {
+    "min": 101.325,
+    "max": 743.71,
+    "mean": 325.5918664128235,
+    "median": 320.27
+  },
+  "Pressure_kPa": {
+    "min": 90.0,
+    "max": 65000.0,
+    "mean": 269.75451453613977,
+    "median": 101.325
+  }
+}
