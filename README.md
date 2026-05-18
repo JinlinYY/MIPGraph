@@ -6,7 +6,7 @@ Implementation for the project accompanying the manuscript:
 A Mechanism-Factorized Ion-Pair Graph Learning Framework for Thermophysical Property Prediction of Ionic Liquids
 ```
 
-This repository provides a complete research codebase for sparse-label multi-property prediction of ionic liquids. The main model, **MIPGraphNet**, predicts six thermophysical properties from ionic-liquid SMILES, temperature, and pressure:
+This repository provides a complete research codebase for sparse-label multi-property prediction of ionic liquids. The main model, **MIPGraph**, predicts six thermophysical properties from ionic-liquid SMILES, temperature, and pressure:
 
 - Density
 - ElectricalConductivity
