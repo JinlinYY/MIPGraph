@@ -15,6 +15,9 @@ This repository provides a complete research codebase for sparse-label multi-pro
 - ThermalConductivity
 - Viscosity
 
+
+![image](https://github.com/JinlinYY/MIPGraph/blob/main/method.png).
+
 ## Overview
 
 MIPGraphNet is designed for ionic-liquid datasets where each sample may contain only a subset of property labels. The training objective uses masked multi-task learning, so missing labels do not contribute to the loss.
