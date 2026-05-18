@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Environments and IDE files
+.venv/
+venv/
+env/
+.vscode/
+
+# Local browser/session profiles
+.selenium_leskoff_profile/
+
+# Generated model/data artifacts
+il_property_prediction/outputs/
+il_property_prediction/data/processed/
+il_property_prediction/data/raw/
+il_property_prediction/data/cache/
+il_property_prediction/data/data/
+
+# Root data products and downloaded databases
+data/raw/
+data/processed/
+data/cache/
+data/data/
+data/ILThermoPy-main/
+data/pyilt2-master/
+data/Smiles-TO-iUpac-Translator-main/
+
+# Large generated outputs and reports
+outputs/
+experiments/
+web/
+*.pt
+*.pth
+*.ckpt
+
+# Manuscript drafts or local documents
+*.pdf
+*.docx
+*.pptx
+
+# OS metadata
+Thumbs.db
+.DS_Store
