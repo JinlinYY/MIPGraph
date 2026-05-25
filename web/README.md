@@ -5,6 +5,11 @@ Input cation–anion SMILES and operating conditions (T, P) to instantly obtain 
 
 > Density · Electrical Conductivity · Heat Capacity · Surface Tension · Thermal Conductivity · Viscosity
 
+
+
+
+![image](https://github.com/JinlinYY/MIPGraph/blob/main/web/Ionic%20Liquid%20Thermophysical%20Property%20Predictor.png).
+
 ---
 
 ## Installation
