@@ -65,6 +65,58 @@ ABLATIONS = {
         "description": "Row-level split control; leakage-prone and not a component ablation.",
         "changes": {"data.split_type": "row_level"},
     },
+    "J1_A2_A3_no_mechanistic_latents_and_structured_decoder": {
+        "description": "Joint ablation of A2 and A3: remove mechanism-factorized latents and the structured thermodynamic decoder.",
+        "changes": {"model.use_mechanistic_latent_heads": False, "model.use_structured_decoder": False},
+    },
+    "J2_A6_no_property_specific_latent_path": {
+        "description": "Joint property-specific path ablation corresponding to strict A6: disable learned gates and zero property latent inputs.",
+        "changes": {"model.use_property_latent_gating": False, "model.zero_property_latents": True},
+    },
+    "J3_A3_A5_no_structured_decoder_and_condition_film": {
+        "description": "Joint ablation of A3 and A5: remove condition-structured decoding by using a plain decoder and no FiLM modulation.",
+        "changes": {"model.use_structured_decoder": False, "model.use_condition_film": False},
+    },
+    "J4_A4_A6_no_error_weighting_and_property_latent_path": {
+        "description": "Joint ablation of A4 and strict A6: remove ErrorValue-aware loss and the property-specific latent path.",
+        "changes": {
+            "loss.use_error_weight": False,
+            "model.use_property_latent_gating": False,
+            "model.zero_property_latents": True,
+        },
+    },
+    "J5_A1_A8_A9_no_explicit_ion_geometry_stack": {
+        "description": "Joint ablation of A1, strict A8, and strict A9: remove cross-ion edges, explicit ion interaction features, and geometry features.",
+        "changes": {
+            "model.use_cross_ion_edges": False,
+            "model.use_interaction_encoder": False,
+            "model.use_pairwise_ion_features": False,
+            "model.use_e3_invariant_geometry": False,
+            "model.strip_edge_geometry": True,
+        },
+        "requires_graph_cache": True,
+    },
+    "J6_A2_A3_A5_A6_plain_multitask_gnn": {
+        "description": "Plain multitask GNN-like variant combining A2, A3, A5, and strict A6.",
+        "changes": {
+            "model.use_mechanistic_latent_heads": False,
+            "model.use_structured_decoder": False,
+            "model.use_condition_film": False,
+            "model.use_property_latent_gating": False,
+            "model.zero_property_latents": True,
+        },
+    },
+    "J7_A2_A3_A4_A5_A6_no_core_innovations": {
+        "description": "Remove the core innovation stack by combining A2, A3, A4, A5, and strict A6.",
+        "changes": {
+            "model.use_mechanistic_latent_heads": False,
+            "model.use_structured_decoder": False,
+            "loss.use_error_weight": False,
+            "model.use_condition_film": False,
+            "model.use_property_latent_gating": False,
+            "model.zero_property_latents": True,
+        },
+    },
 }
 
 
@@ -155,6 +207,8 @@ def main():
         exp_cfg["outputs"]["metric_dir"] = str(exp_output / "metrics")
         exp_cfg["outputs"]["prediction_dir"] = str(exp_output / "predictions")
         exp_cfg["outputs"]["figure_dir"] = str(exp_output / "figures")
+        exp_cfg["training"]["monitor_metric"] = "macro_MAE"
+        exp_cfg["training"]["monitor_mode"] = "min"
         if spec.get("requires_graph_cache"):
             exp_cfg["data"]["graph_cache_path"] = str(exp_output / "graph_cache.pt")
             exp_cfg["data"]["failed_smiles_path"] = str(exp_output / "failed_smiles.csv")
