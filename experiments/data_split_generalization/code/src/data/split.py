@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ..chem.smiles_utils import canonicalize_smiles, split_ion_pair
 from .ion_family import add_ion_family_columns, export_ion_family_report
 
 
@@ -64,14 +65,7 @@ def create_il_pair_split(
     seed: int = 42,
 ) -> Path:
     df = pd.read_csv(clean_csv)
-    if {"Cation_ShortName", "Anion_ShortName"}.issubset(df.columns):
-        keys = (
-            df["Cation_ShortName"].fillna("").astype(str)
-            + "||"
-            + df["Anion_ShortName"].fillna("").astype(str)
-        )
-    else:
-        keys = df["IL_SMILES"].fillna("").astype(str)
+    keys = df.apply(_structural_il_pair_key, axis=1)
     groups = _split_list(keys.dropna().unique(), (train_ratio, val_ratio, test_ratio), seed)
     split = {}
     for name, group_keys in groups.items():
@@ -82,6 +76,38 @@ def create_il_pair_split(
         json.dump(split, f, indent=2)
     write_split_summary(df, split, out.with_suffix(".summary.csv"))
     return out
+
+
+def _structural_il_pair_key(row: pd.Series) -> str:
+    smiles = str(row.get("IL_SMILES", "") or "").strip()
+    if smiles:
+        parts = split_ion_pair(smiles)
+        if parts.cation_smiles and parts.anion_smiles:
+            cation_key, cation_error = canonicalize_smiles(parts.cation_smiles)
+            anion_key, anion_error = canonicalize_smiles(parts.anion_smiles)
+            if cation_key and anion_key and not cation_error and not anion_error:
+                return f"{cation_key}||{anion_key}"
+        il_key, il_error = canonicalize_smiles(smiles)
+        if il_key and not il_error:
+            return il_key
+        return smiles
+    if {"Cation_ShortName", "Anion_ShortName"}.issubset(row.index):
+        return f"{row.get('Cation_ShortName', '')}||{row.get('Anion_ShortName', '')}"
+    return ""
+
+
+def _ion_smiles_key(row: pd.Series, ion_type: str) -> str:
+    smiles = str(row.get("IL_SMILES", "") or "").strip()
+    if smiles:
+        parts = split_ion_pair(smiles)
+        ion_smiles = parts.cation_smiles if ion_type == "cation" else parts.anion_smiles
+        if ion_smiles:
+            ion_key, ion_error = canonicalize_smiles(ion_smiles)
+            if ion_key and not ion_error:
+                return ion_key
+            return ion_smiles
+    fallback_col = "Cation_ShortName" if ion_type == "cation" else "Anion_ShortName"
+    return str(row.get(fallback_col, "") or "").strip()
 
 
 def create_family_split(
@@ -96,12 +122,13 @@ def create_family_split(
     if ion_type not in {"cation", "anion"}:
         raise ValueError("ion_type must be 'cation' or 'anion'")
     df = add_ion_family_columns(pd.read_csv(clean_csv))
-    family_col = "Cation_Family" if ion_type == "cation" else "Anion_Family"
-    families = df[family_col].dropna().unique()
-    groups = _split_list(families, (train_ratio, val_ratio, test_ratio), seed)
+    key_col = "Cation_SMILES_Key" if ion_type == "cation" else "Anion_SMILES_Key"
+    df[key_col] = df.apply(lambda row: _ion_smiles_key(row, ion_type), axis=1)
+    ion_keys = df[key_col].replace("", np.nan).dropna().unique()
+    groups = _split_list(ion_keys, (train_ratio, val_ratio, test_ratio), seed)
     split = {}
-    for name, family_names in groups.items():
-        split[name] = df.index[df[family_col].isin(family_names)].astype(int).tolist()
+    for name, split_keys in groups.items():
+        split[name] = df.index[df[key_col].isin(split_keys)].astype(int).tolist()
     split_name = f"{ion_type}_family"
     out = Path(output_dir) / "splits" / f"{split_name}_seed{seed}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -199,6 +226,12 @@ def write_split_summary(df: pd.DataFrame, split: dict[str, list[int]], output_pa
             "unique_il_smiles": int(part["IL_SMILES"].nunique(dropna=True)) if "IL_SMILES" in part else 0,
             "unique_cations": int(part["Cation_ShortName"].nunique(dropna=True)) if "Cation_ShortName" in part else 0,
             "unique_anions": int(part["Anion_ShortName"].nunique(dropna=True)) if "Anion_ShortName" in part else 0,
+            "unique_cation_smiles_keys": int(part["Cation_SMILES_Key"].nunique(dropna=True))
+            if "Cation_SMILES_Key" in part
+            else 0,
+            "unique_anion_smiles_keys": int(part["Anion_SMILES_Key"].nunique(dropna=True))
+            if "Anion_SMILES_Key" in part
+            else 0,
             "cation_families": "|".join(sorted(part["Cation_Family"].dropna().unique())),
             "anion_families": "|".join(sorted(part["Anion_Family"].dropna().unique())),
         }
