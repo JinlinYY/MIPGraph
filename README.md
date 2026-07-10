@@ -16,27 +16,6 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 - Surface tension
 - Thermal conductivity
 
-## Highlights
-
-- Sparse multi-property IL benchmark with 37,556 thermodynamic condition records, 1,125 unique ionic liquids, and 110,212 available property labels.
-- Explicit cation-anion representation with Uni-Mol2 ion embeddings, chemistry-biased cross-ion attention, global descriptors, and functional-group descriptors.
-- Multiphysics mixture-of-experts decoder with packing, cohesion, transport, and thermal-response experts.
-- Sparse-label training with source-reliability weights and original-label evaluation masks.
-- Four split protocols for interpolation and generalization analysis: random-point, random IL-level, property-balanced IL-level, and ion-family.
-- Agent-style application case for [BMIM]-based conductivity-viscosity screening and ranked operating-condition selection.
-
-## Reported Performance
-
-The manuscript reports macro log-space NMAE over six properties:
-
-| Split | RF | XGBoost | LGBM | ChemBERTa | MPNN | GCN | GAT | GraphSAGE | MIPGraph |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Random-point | 0.0540 | 0.0638 | 0.0596 | 0.0745 | 0.0944 | 0.1104 | 0.1033 | 0.1077 | 0.0640 |
-| Random IL-level | 0.2503 | 0.2446 | 0.2466 | 0.4277 | 0.2366 | 0.2354 | 0.3093 | 0.2491 | 0.2212 |
-| Property-balanced IL-level | 0.3398 | 0.2687 | 0.2728 | 0.4282 | 0.3060 | 0.2957 | 0.3057 | 0.2763 | 0.2476 |
-| Ion-family | 0.3207 | 0.3334 | 0.3336 | 0.4222 | 0.3743 | 0.3657 | 0.3879 | 0.3488 | 0.3153 |
-
-Random-point is a table-completion / condition-interpolation setting. The IL-level and ion-family splits are stricter tests of transfer to unseen ILs and chemically disjoint ion families.
 
 ## Repository Layout
 
