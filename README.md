@@ -17,6 +17,10 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 - Thermal conductivity
 
 
+
+![MIPGraph framework](https://github.com/JinlinYY/MIPGraph/blob/main/Intro-method.png)
+
+
 ## Repository Layout
 
 ```text
