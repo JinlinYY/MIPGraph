@@ -187,12 +187,3 @@ experiments/application_case/scripts/plot_application_case_agent_merged.py
 
 It converts predicted thermophysical properties for candidate IL-condition records into response atlases, conductivity-viscosity trade-offs, constraint maps, Pareto screening, and ranked operating recommendations.
 
-## Notes On Large Files
-
-This repository uses Git LFS for model checkpoints, binary graph caches, workbooks, PNG/TIFF figures, and other large artifacts. If a large file appears as a small pointer file after cloning, run:
-
-```bash
-git lfs pull
-```
-
-Training outputs under `outputs/`, local caches, scratch directories, and external pretrained checkpoints are not intended for source control unless explicitly released. Validation-selected MIPGraph checkpoints can be published separately through Git LFS or GitHub Release assets.
