@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\Density.xlsx",
+      "output": "data\\processed\\Density.csv",
+      "rows": 26349,
+      "rows_missing_smiles": 18241,
+      "rows_with_smiles": 8108,
+      "unique_ionic_liquids": 992,
+      "unparsed_unique_names": 1
+    },
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\ElectricalConductivity.xlsx",
+      "output": "data\\processed\\ElectricalConductivity.csv",
+      "rows": 5484,
+      "rows_missing_smiles": 3544,
+      "rows_with_smiles": 1940,
+      "unique_ionic_liquids": 403,
+      "unparsed_unique_names": 0
+    },
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\HeatCapacity.xlsx",
+      "output": "data\\processed\\HeatCapacity.csv",
+      "rows": 11616,
+      "rows_missing_smiles": 6863,
+      "rows_with_smiles": 4753,
+      "unique_ionic_liquids": 263,
+      "unparsed_unique_names": 0
+    },
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\SurfaceTension.xlsx",
+      "output": "data\\processed\\SurfaceTension.csv",
+      "rows": 5987,
+      "rows_missing_smiles": 3505,
+      "rows_with_smiles": 2482,
+      "unique_ionic_liquids": 406,
+      "unparsed_unique_names": 0
+    },
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\ThermalConductivity.xlsx",
+      "output": "data\\processed\\ThermalConductivity.csv",
+      "rows": 844,
+      "rows_missing_smiles": 575,
+      "rows_with_smiles": 269,
+      "unique_ionic_liquids": 75,
+      "unparsed_unique_names": 2
+    },
+    {
+      "input": "data\\raw\\Supporting Information_2\\data set\\Viscosity.xlsx",
+      "output": "data\\processed\\Viscosity.csv",
+      "rows": 16123,
+      "rows_missing_smiles": 10739,
+      "rows_with_smiles": 5384,
+      "unique_ionic_liquids": 756,
+      "unparsed_unique_names": 0
+    }
+  ]
+}

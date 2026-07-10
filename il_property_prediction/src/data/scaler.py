@@ -85,11 +85,21 @@ class TargetScaler:
         return weights
 
 
-def fit_scalers(arrays: dict[str, Any], train_indices: list[int], clip_min: float = 0.1, clip_max: float = 10.0):
+def fit_scalers(
+    arrays: dict[str, Any],
+    train_indices: list[int],
+    clip_min: float = 0.1,
+    clip_max: float = 10.0,
+    target_mask_key: str = "mask",
+):
     idx = np.array(train_indices, dtype=np.int64)
     condition_scaler = ConditionScaler.fit(arrays["temperature"][idx], arrays["pressure"][idx])
-    target_scaler = TargetScaler.fit(arrays["y"][idx], arrays["mask"][idx])
+    if target_mask_key not in arrays:
+        raise KeyError(f"Target scaler mask {target_mask_key!r} was not found in preprocessed arrays")
+    target_scaler = TargetScaler.fit(arrays["y"][idx], arrays[target_mask_key][idx])
     y_scaled = target_scaler.transform(arrays["y"], arrays["mask"])
     condition = condition_scaler.transform(arrays["temperature"], arrays["pressure"])
     weights = target_scaler.error_weights(arrays["y"], arrays["y_error"], arrays["mask"], arrays["error_mask"], clip_min, clip_max)
+    if "label_weight" in arrays:
+        weights *= np.asarray(arrays["label_weight"], dtype=np.float32)
     return condition_scaler, target_scaler, y_scaled, condition, weights

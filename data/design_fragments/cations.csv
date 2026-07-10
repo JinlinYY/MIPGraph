@@ -1,0 +1,7 @@
+name,smiles,family,charge,notes
+emim,CCn1cc[n+](C)c1,imidazolium,1,1-ethyl-3-methylimidazolium starter fragment
+bmim,CCCCn1cc[n+](C)c1,imidazolium,1,1-butyl-3-methylimidazolium starter fragment
+ethylpyridinium,CC[n+]1ccccc1,pyridinium,1,N-ethylpyridinium starter fragment
+tetramethylammonium,C[N+](C)(C)C,ammonium,1,quaternary ammonium starter fragment
+tetraethylammonium,CC[N+](CC)(CC)CC,ammonium,1,quaternary ammonium starter fragment
+methylpropylpyrrolidinium,CCC[N+]1(C)CCCC1,pyrrolidinium,1,N-methyl-N-propylpyrrolidinium starter fragment

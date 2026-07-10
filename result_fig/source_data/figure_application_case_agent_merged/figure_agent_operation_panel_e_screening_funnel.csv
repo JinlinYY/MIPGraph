@@ -1,0 +1,8 @@
+stage,count,fraction_of_generated
+Generated records,22,1.0
+Valid ion pairs,22,1.0
+Predicted records,22,1.0
+Viscosity <= 10 mPa s,9,0.4090909090909091
+Conductivity >= 2 S m^-1,9,0.4090909090909091
+Both constraints pass,8,0.36363636363636365
+Top-k retained,8,0.36363636363636365

@@ -1,0 +1,133 @@
+{
+  "method": "ion_family_group_split",
+  "group_by": "pair",
+  "objective": 0.02269799954101801,
+  "feature_names": [
+    "row_count",
+    "unique_il_count",
+    "temperature_bin_0",
+    "temperature_bin_1",
+    "temperature_bin_2",
+    "temperature_bin_3",
+    "pressure_bin_0",
+    "pressure_bin_1",
+    "Density_label_count",
+    "Density_log_bin_0",
+    "Density_log_bin_1",
+    "Density_log_bin_2",
+    "Density_log_bin_3",
+    "ElectricalConductivity_label_count",
+    "ElectricalConductivity_log_bin_0",
+    "ElectricalConductivity_log_bin_1",
+    "ElectricalConductivity_log_bin_2",
+    "ElectricalConductivity_log_bin_3",
+    "HeatCapacity_label_count",
+    "HeatCapacity_log_bin_0",
+    "HeatCapacity_log_bin_1",
+    "HeatCapacity_log_bin_2",
+    "HeatCapacity_log_bin_3",
+    "SurfaceTension_label_count",
+    "SurfaceTension_log_bin_0",
+    "SurfaceTension_log_bin_1",
+    "SurfaceTension_log_bin_2",
+    "SurfaceTension_log_bin_3",
+    "ThermalConductivity_label_count",
+    "ThermalConductivity_log_bin_0",
+    "ThermalConductivity_log_bin_1",
+    "ThermalConductivity_log_bin_2",
+    "ThermalConductivity_log_bin_3",
+    "Viscosity_label_count",
+    "Viscosity_log_bin_0",
+    "Viscosity_log_bin_1",
+    "Viscosity_log_bin_2",
+    "Viscosity_log_bin_3"
+  ],
+  "family_group_overlap": {
+    "train_val": [],
+    "train_test": [],
+    "val_test": []
+  },
+  "folds": {
+    "train": {
+      "rows": 26726,
+      "unique_ils": 733,
+      "family_groups": 58,
+      "cation_families": 7,
+      "anion_families": 20,
+      "property_labels": {
+        "Density": 12639,
+        "ElectricalConductivity": 3225,
+        "HeatCapacity": 7464,
+        "SurfaceTension": 3513,
+        "ThermalConductivity": 573,
+        "Viscosity": 7981
+      },
+      "top_family_groups": {
+        "Imidazolium || NTf2": 5314,
+        "Imidazolium || PF6": 3494,
+        "Protic ammonium || Carboxylate": 2274,
+        "Imidazolium || Halide": 2237,
+        "Pyridinium || NTf2": 2171,
+        "Imidazolium || Hydrogen sulfate": 2157,
+        "Imidazolium || Dicyanamide": 1590,
+        "Cholinium || NTf2": 827,
+        "Imidazolium || Amino acid": 798,
+        "Imidazolium || Tricyanomethanide": 686
+      }
+    },
+    "val": {
+      "rows": 5309,
+      "unique_ils": 215,
+      "family_groups": 12,
+      "cation_families": 4,
+      "anion_families": 11,
+      "property_labels": {
+        "Density": 2779,
+        "ElectricalConductivity": 765,
+        "HeatCapacity": 1168,
+        "SurfaceTension": 834,
+        "ThermalConductivity": 122,
+        "Viscosity": 1857
+      },
+      "top_family_groups": {
+        "Imidazolium || Carboxylate": 1266,
+        "Quaternary ammonium || NTf2": 1255,
+        "Imidazolium || Triflate": 1154,
+        "Imidazolium || Alkyl sulfonate": 555,
+        "Pyridinium || Dicyanamide": 253,
+        "Phosphonium || Halide": 210,
+        "Pyridinium || Tricyanomethanide": 185,
+        "Quaternary ammonium || Carboxylate": 168,
+        "Pyridinium || PF6": 116,
+        "Imidazolium || Borate (alkoxy / aryl)": 105
+      }
+    },
+    "test": {
+      "rows": 5521,
+      "unique_ils": 177,
+      "family_groups": 13,
+      "cation_families": 5,
+      "anion_families": 12,
+      "property_labels": {
+        "Density": 2437,
+        "ElectricalConductivity": 852,
+        "HeatCapacity": 1162,
+        "SurfaceTension": 807,
+        "ThermalConductivity": 117,
+        "Viscosity": 1882
+      },
+      "top_family_groups": {
+        "Imidazolium || BF4": 2335,
+        "Imidazolium || Other": 2175,
+        "Phosphonium || Nitrite": 255,
+        "Phosphonium || Alkyl sulfonate": 180,
+        "Pyridinium || Triflate": 117,
+        "Imidazolium || Phenolate": 105,
+        "Cholinium || Halide": 80,
+        "Cholinium || Hydrogen sulfate": 72,
+        "Pyridinium || FSI": 60,
+        "Phosphonium || Alkyl phosphate": 59
+      }
+    }
+  }
+}

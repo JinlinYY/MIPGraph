@@ -7,6 +7,7 @@ import torch
 from rdkit import Chem
 from torch_geometric.data import Data
 
+from .functional_groups import FUNCTIONAL_GROUP_DESCRIPTOR_DIM, ion_pair_functional_group_descriptors
 from .conformer import approximate_ion_pair_geometry, generate_3d_conformer
 from .global_descriptors import GLOBAL_DESCRIPTOR_DIM, ion_pair_descriptors
 from .smiles_utils import split_ion_pair
@@ -211,6 +212,10 @@ def build_ion_pair_graph(
         has_3d=torch.tensor([1 if has_3d else 0], dtype=torch.long),
         valid_flag=torch.tensor([1], dtype=torch.long),
         global_desc=torch.tensor(ion_pair_descriptors(c_mol, a_mol, c_pos, a_pos), dtype=torch.float32).view(1, GLOBAL_DESCRIPTOR_DIM),
+        functional_group_desc=torch.tensor(
+            ion_pair_functional_group_descriptors(c_mol, a_mol),
+            dtype=torch.float32,
+        ).view(1, FUNCTIONAL_GROUP_DESCRIPTOR_DIM),
     )
     data.smiles = smiles
     data.cation_smiles = parts.cation_smiles

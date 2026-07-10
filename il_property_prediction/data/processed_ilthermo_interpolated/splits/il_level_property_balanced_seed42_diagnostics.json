@@ -1,0 +1,93 @@
+{
+  "method": "property_balanced_il_level",
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "objective": 0.0005700492680403227,
+  "feature_names": [
+    "row_count",
+    "temperature_bin_0",
+    "temperature_bin_1",
+    "temperature_bin_2",
+    "temperature_bin_3",
+    "pressure_bin_0",
+    "pressure_bin_1",
+    "Density_IL_presence",
+    "Density_label_count",
+    "Density_log_bin_0",
+    "Density_log_bin_1",
+    "Density_log_bin_2",
+    "Density_log_bin_3",
+    "ElectricalConductivity_IL_presence",
+    "ElectricalConductivity_label_count",
+    "ElectricalConductivity_log_bin_0",
+    "ElectricalConductivity_log_bin_1",
+    "ElectricalConductivity_log_bin_2",
+    "ElectricalConductivity_log_bin_3",
+    "HeatCapacity_IL_presence",
+    "HeatCapacity_label_count",
+    "HeatCapacity_log_bin_0",
+    "HeatCapacity_log_bin_1",
+    "HeatCapacity_log_bin_2",
+    "HeatCapacity_log_bin_3",
+    "SurfaceTension_IL_presence",
+    "SurfaceTension_label_count",
+    "SurfaceTension_log_bin_0",
+    "SurfaceTension_log_bin_1",
+    "SurfaceTension_log_bin_2",
+    "SurfaceTension_log_bin_3",
+    "ThermalConductivity_IL_presence",
+    "ThermalConductivity_label_count",
+    "ThermalConductivity_log_bin_0",
+    "ThermalConductivity_log_bin_1",
+    "ThermalConductivity_log_bin_2",
+    "ThermalConductivity_log_bin_3",
+    "Viscosity_IL_presence",
+    "Viscosity_label_count",
+    "Viscosity_log_bin_0",
+    "Viscosity_log_bin_1",
+    "Viscosity_log_bin_2",
+    "Viscosity_log_bin_3"
+  ],
+  "folds": {
+    "train": {
+      "rows": 26409,
+      "unique_ils": 788,
+      "property_labels": {
+        "Density": 12401,
+        "ElectricalConductivity": 3380,
+        "HeatCapacity": 6904,
+        "SurfaceTension": 3611,
+        "ThermalConductivity": 560,
+        "Viscosity": 8214
+      }
+    },
+    "val": {
+      "rows": 5523,
+      "unique_ils": 169,
+      "property_labels": {
+        "Density": 2722,
+        "ElectricalConductivity": 730,
+        "HeatCapacity": 1449,
+        "SurfaceTension": 773,
+        "ThermalConductivity": 128,
+        "Viscosity": 1763
+      }
+    },
+    "test": {
+      "rows": 5624,
+      "unique_ils": 168,
+      "property_labels": {
+        "Density": 2732,
+        "ElectricalConductivity": 732,
+        "HeatCapacity": 1441,
+        "SurfaceTension": 770,
+        "ThermalConductivity": 124,
+        "Viscosity": 1743
+      }
+    }
+  }
+}

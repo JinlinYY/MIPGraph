@@ -1,0 +1,7 @@
+figure,panel,panel_title,measure,value,unit,source_category
+dataset_statistics,A,Dataset scale and source-aware label expansion,condition_records,37556.0,records,
+dataset_statistics,A,Dataset scale and source-aware label expansion,unique_ionic_liquids,1125.0,ILs,
+dataset_statistics,A,Dataset scale and source-aware label expansion,available_property_labels,110212.0,labels,
+dataset_statistics,A,Dataset scale and source-aware label expansion,label_source_total,50918.0,labels,observed
+dataset_statistics,A,Dataset scale and source-aware label expansion,label_source_total,7994.0,labels,exact_condition_copy
+dataset_statistics,A,Dataset scale and source-aware label expansion,label_source_total,51300.0,labels,temperature_interpolation

@@ -3,7 +3,7 @@
 This script:
 
 1. Loads the curated Excel file
-   ``ionic_liquid_6_properties_values_errors_ilthermo_strict.xlsx``.
+   ``ionic_liquid_6_properties_values_errors_ilthermo_strict_v2_interpolated.xlsx``.
 2. Counts the number of measurements available for each of the six
    thermophysical properties.
 3. Builds the IL × Property label-presence matrix and per-IL coverage.
@@ -17,7 +17,7 @@ This script:
 Run::
 
     python analyze_dataset.py \
-        --input data/processed/ionic_liquid_6_properties_values_errors_ilthermo_strict.xlsx \
+        --input data/processed/ionic_liquid_6_properties_values_errors_ilthermo_strict_v2_interpolated.xlsx \
         --output-dir exp1_dataset_analysis/outputs
 """
 
@@ -141,6 +141,47 @@ def property_sample_counts(df: pd.DataFrame) -> pd.DataFrame:
             "N_Unique_IL":        n_il,
             "Pct_Total_Rows":     100.0 * n_meas / len(df),
         })
+    return pd.DataFrame(rows)
+
+
+def _source_category(value: object) -> str:
+    """Collapse workbook value-source tags into figure-ready categories."""
+
+    if pd.isna(value):
+        return "observed"
+    text = str(value).strip().lower()
+    if not text:
+        return "observed"
+    if "exact_condition" in text or "copy" in text:
+        return "exact_condition_copy"
+    if "interpolation" in text or "interpolated" in text:
+        return "temperature_interpolation"
+    return "observed"
+
+
+def label_source_counts(df: pd.DataFrame) -> pd.DataFrame:
+    """Count observed/copied/interpolated labels for each property."""
+
+    rows: List[Dict[str, object]] = []
+    for prop in PROPERTIES:
+        value_col = f"{prop}_ActualValue"
+        source_col = f"{prop}_ValueSource"
+        present = df[value_col].notna()
+        if source_col in df.columns:
+            source = df.loc[present, source_col].map(_source_category)
+        else:
+            source = pd.Series("observed", index=df.index[present])
+
+        counts = source.value_counts().to_dict()
+        for category in ("observed",
+                         "exact_condition_copy",
+                         "temperature_interpolation"):
+            rows.append({
+                "Property": prop,
+                "Property_Display": PROPERTY_DISPLAY[prop],
+                "Source_Category": category,
+                "N_Labels": int(counts.get(category, 0)),
+            })
     return pd.DataFrame(rows)
 
 
@@ -363,6 +404,7 @@ def run_analysis(paths: Paths) -> Dict[str, pd.DataFrame]:
     df = load_dataset(paths)
 
     prop_counts = property_sample_counts(df)
+    source_counts = label_source_counts(df)
     prop_values = property_value_summary(df)
     label_matrix = il_label_matrix(df)
     coverage = il_label_coverage(label_matrix)
@@ -380,6 +422,7 @@ def run_analysis(paths: Paths) -> Dict[str, pd.DataFrame]:
     outputs = {
         "raw_with_family":           df_with_family,
         "property_sample_counts":    prop_counts,
+        "label_source_counts":       source_counts,
         "property_value_summary":    prop_values,
         "il_label_matrix":           label_matrix,
         "il_label_coverage":         coverage,
@@ -400,6 +443,7 @@ def write_outputs(outputs: Dict[str, pd.DataFrame], paths: Paths) -> None:
     paths.tables_dir.mkdir(parents=True, exist_ok=True)
     out_files = {
         "property_sample_counts":      "property_sample_counts.csv",
+        "label_source_counts":         "label_source_counts.csv",
         "property_value_summary":      "property_value_summary.csv",
         "il_label_matrix":             "il_label_matrix.csv",
         "il_label_coverage":           "il_label_coverage.csv",
@@ -443,7 +487,7 @@ def _parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--input", type=Path,
         default=Path("data/processed/"
-                     "ionic_liquid_6_properties_values_errors_ilthermo_strict.xlsx"),
+                     "ionic_liquid_6_properties_values_errors_ilthermo_strict_v2_interpolated.xlsx"),
         help="Path to the merged Excel file.")
     parser.add_argument(
         "--output-dir", type=Path,

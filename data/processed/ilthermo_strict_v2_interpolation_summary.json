@@ -1,0 +1,61 @@
+{
+  "Density": {
+    "no_curve": 2441,
+    "temperature_linear_interpolation": 10531,
+    "outside_observed_range": 4614,
+    "exact_condition_copy": 2044,
+    "temperature_gap_too_large": 14,
+    "conflicting_source_knots": 0,
+    "temperature_log_interpolation": 0,
+    "filled_total": 12575
+  },
+  "ElectricalConductivity": {
+    "no_curve": 16694,
+    "outside_observed_range": 4964,
+    "temperature_log_interpolation": 9684,
+    "exact_condition_copy": 1110,
+    "temperature_gap_too_large": 59,
+    "conflicting_source_knots": 9,
+    "temperature_linear_interpolation": 0,
+    "filled_total": 10794
+  },
+  "HeatCapacity": {
+    "no_curve": 16732,
+    "outside_observed_range": 3272,
+    "temperature_linear_interpolation": 6818,
+    "exact_condition_copy": 831,
+    "temperature_gap_too_large": 22,
+    "conflicting_source_knots": 2,
+    "temperature_log_interpolation": 0,
+    "filled_total": 7649
+  },
+  "SurfaceTension": {
+    "no_curve": 16967,
+    "exact_condition_copy": 2227,
+    "outside_observed_range": 5976,
+    "temperature_linear_interpolation": 7232,
+    "conflicting_source_knots": 0,
+    "temperature_log_interpolation": 0,
+    "filled_total": 9459
+  },
+  "ThermalConductivity": {
+    "no_curve": 26758,
+    "outside_observed_range": 4228,
+    "temperature_linear_interpolation": 5152,
+    "exact_condition_copy": 129,
+    "temperature_gap_too_large": 446,
+    "conflicting_source_knots": 0,
+    "temperature_log_interpolation": 0,
+    "filled_total": 5281
+  },
+  "Viscosity": {
+    "no_curve": 6431,
+    "outside_observed_range": 5425,
+    "temperature_log_interpolation": 11883,
+    "exact_condition_copy": 1653,
+    "temperature_gap_too_large": 81,
+    "conflicting_source_knots": 11,
+    "temperature_linear_interpolation": 0,
+    "filled_total": 13536
+  }
+}

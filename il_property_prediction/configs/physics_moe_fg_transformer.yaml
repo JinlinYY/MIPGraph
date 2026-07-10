@@ -1,0 +1,141 @@
+data:
+  raw_path: ../data/processed/ionic_liquid_6_properties_values_errors.xlsx
+  sheet_name: Merged
+  processed_dir: data/processed
+  clean_csv: data/processed/il_multiprop_clean.csv
+  arrays_path: data/processed/il_multiprop_arrays.npz
+  graph_cache_path: data/processed/graph_cache_fg.pt
+  failed_smiles_path: data/processed/failed_smiles.csv
+  split_type: row_level
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+
+properties:
+  names:
+    - Density
+    - ElectricalConductivity
+    - HeatCapacity
+    - SurfaceTension
+    - ThermalConductivity
+    - Viscosity
+  log_transform:
+    Density: true
+    ElectricalConductivity: true
+    HeatCapacity: true
+    SurfaceTension: true
+    ThermalConductivity: true
+    Viscosity: true
+
+chem:
+  use_3d: true
+  conformer_method: ETKDGv3
+  optimize_method: UFF
+  cross_ion_mode: deterministic_2d
+  cross_ion_cutoff: 5.0
+  add_virtual_global_edges: true
+  max_conformer_attempts: 20
+  seed: 42
+
+model:
+  name: MIPGraph
+  hidden_dim: 256
+  latent_dim: 256
+  dropout: 0.15
+  ion_encoder: unimol2
+  unimol2_model_size: 84m
+  unimol2_weight_dir: data/pretrained/unimol2
+  unimol2_feature_cache_path: data/processed/unimol2_ion_features.pt
+  freeze_unimol2_backbone: true
+  unimol2_unfreeze_last_n_layers: 0
+  unimol2_projection_dropout: 0.1
+  use_atom_cross_attention: true
+  cross_attention_heads: 8
+  cross_attention_dropout: 0.1
+  use_global_descriptors: true
+  global_descriptor_dim: 56
+  use_functional_group_descriptors: true
+  functional_group_dim: 80
+  use_transformer_fusion: true
+  transformer_fusion_layers: 2
+  transformer_fusion_heads: 8
+  transformer_fusion_dropout: 0.1
+  use_condition_film: true
+  use_property_coupling: false
+  use_property_adapters: false
+  physics_moe_top_k: 2
+  physics_moe_router_temperature: 1.0
+  physics_moe_prior_strength: 1.0
+  property_head_hidden_dim: 512
+  property_head_depth: 3
+  property_head_dropout: 0.15
+
+training:
+  batch_size: 64
+  epochs: 100
+  lr: 0.00005
+  backbone_lr: 0.00001
+  weight_decay: 0.00001
+  patience: 40
+  gradient_clip_norm: 5.0
+  device: auto
+  num_workers: 0
+  pin_memory: true
+  persistent_workers: false
+  prefetch_factor: 2
+  use_amp: false
+  validate_every: 2
+  monitor_metric: macro_log_val_score
+  monitor_mode: max
+  seed: 42
+
+loss:
+  type: masked_weighted_mse
+  use_error_weight: true
+  balance_properties: true
+  property_loss_weights:
+    Density: 1.0
+    ElectricalConductivity: 2.0
+    HeatCapacity: 1.0
+    SurfaceTension: 2.0
+    ThermalConductivity: 1.5
+    Viscosity: 2.0
+  high_value_weighting: {}
+  error_weight_clip_min: 0.1
+  error_weight_clip_max: 10.0
+  use_residual_penalty: false
+  residual_penalty_weight: 0.0
+  use_latent_orthogonality: true
+  latent_orthogonality_weight: 0.002
+  use_gate_entropy_penalty: false
+  gate_entropy_weight: 0.0
+  use_moe_load_balance_loss: true
+  moe_load_balance_weight: 0.005
+  use_moe_prior_loss: true
+  moe_prior_weight: 0.01
+  use_surface_tension_monotonic_reg: false
+  surface_tension_monotonic_weight: 0.0
+  use_density_monotonic_reg: false
+  density_monotonic_weight: 0.0
+
+augmentation:
+  enabled: false
+  method: same_il_pressure_temperature_log_interpolation
+  properties: []
+  points_per_interval: 1
+  max_temperature_gap: 40.0
+  pressure_round_decimals: 1
+  sample_weight: 0.5
+  max_samples_per_property: 0
+  seed: 42
+
+outputs:
+  run_name: mipgraph_fg_transformer_random_point_seed42
+  output_dir: outputs
+  checkpoint_dir: outputs/checkpoints
+  log_dir: outputs/logs
+  metric_dir: outputs/metrics
+  prediction_dir: outputs/predictions
+  figure_dir: outputs/figures
+  ablation_dir: outputs/ablation_mipgraph

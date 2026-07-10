@@ -1,1 +1,1 @@
-"""MIPGraphNet package for sparse multi-property ionic-liquid prediction."""
+"""MIPGraph package for sparse multi-property ionic-liquid prediction."""

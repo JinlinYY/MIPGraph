@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover - fallback for minimal environments.
     tqdm = None
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ILTHERMOPY_SRC = PROJECT_ROOT / "data" / "ILThermoPy-main" / "src"
 DEFAULT_INPUT = PROJECT_ROOT / "data" / "processed" / "ionic_liquid_6_properties_values_errors.xlsx"
 DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "ionic_liquid_6_properties_values_errors_ilthermo_strict.xlsx"
@@ -146,7 +146,7 @@ def save_cache(path: Path, cache: dict[str, Any]) -> None:
         json.dump(cache, handle, ensure_ascii=False, indent=2)
 
 
-def import_ilthermopy(request_timeout: float):
+def import_ilthermopy(request_timeout: float, request_retries: int, retry_backoff: float):
     sys.path.insert(0, str(ILTHERMOPY_SRC))
     import ilthermopy as ilt
     import ilthermopy.requests as ilt_requests
@@ -155,7 +155,13 @@ def import_ilthermopy(request_timeout: float):
 
     def get_with_timeout(*args, **kwargs):
         kwargs.setdefault("timeout", request_timeout)
-        return original_get(*args, **kwargs)
+        for attempt in range(request_retries + 1):
+            try:
+                return original_get(*args, **kwargs)
+            except ilt_requests._requests.exceptions.RequestException:
+                if attempt >= request_retries:
+                    raise
+                time.sleep(retry_backoff * (2**attempt))
 
     ilt_requests._requests.get = get_with_timeout
 
@@ -245,18 +251,20 @@ def collect_needed_queries(
     columns: dict[str, int],
     property_specs: tuple[PropertySpec, ...],
 ) -> OrderedDict[str, tuple[str, PropertySpec]]:
-    il_col = columns["IL_Name"]
+    il_col = columns["IL_Name"] - 1
+    property_cols = [
+        (spec, columns.get(spec.value_column), columns.get(spec.error_column))
+        for spec in property_specs
+    ]
     needed: OrderedDict[str, tuple[str, PropertySpec]] = OrderedDict()
-    for row_idx in range(2, ws.max_row + 1):
-        il_name = normalize_text(ws.cell(row_idx, il_col).value)
+    for row in ws.iter_rows(min_row=2):
+        il_name = normalize_text(row[il_col].value)
         if not il_name:
             continue
-        for spec in property_specs:
-            value_col = columns.get(spec.value_column)
-            error_col = columns.get(spec.error_column)
+        for spec, value_col, error_col in property_cols:
             if value_col is None or error_col is None:
                 continue
-            if is_blank(ws.cell(row_idx, value_col).value) or is_blank(ws.cell(row_idx, error_col).value):
+            if is_blank(row[value_col - 1].value) or is_blank(row[error_col - 1].value):
                 needed.setdefault(cache_lookup_key(il_name, spec), (il_name, spec))
     return needed
 
@@ -271,9 +279,15 @@ def build_cache(
     checkpoint_every: int,
     progress_every: int,
     request_timeout: float,
+    request_retries: int,
+    retry_backoff: float,
     use_tqdm: bool,
 ) -> Counter[str]:
-    ilt = import_ilthermopy(request_timeout=request_timeout)
+    ilt = import_ilthermopy(
+        request_timeout=request_timeout,
+        request_retries=request_retries,
+        retry_backoff=retry_backoff,
+    )
     stats: Counter[str] = Counter()
     records = cache.setdefault("records", {})
     queried = 0
@@ -333,31 +347,33 @@ def fill_properties(
     property_specs: tuple[PropertySpec, ...],
     use_tqdm: bool,
 ) -> tuple[Counter[str], list[dict[str, Any]]]:
-    il_col = columns["IL_Name"]
-    temp_col = columns["Temperature_K"]
-    pressure_col = columns["Pressure_kPa"]
+    il_col = columns["IL_Name"] - 1
+    temp_col = columns["Temperature_K"] - 1
+    pressure_col = columns["Pressure_kPa"] - 1
     records = cache.get("records", {})
     stats: Counter[str] = Counter()
     report_rows: list[dict[str, Any]] = []
 
-    row_iter = range(2, ws.max_row + 1)
+    row_iter = ws.iter_rows(min_row=2)
     if use_tqdm and tqdm is not None:
-        row_iter = tqdm(row_iter, desc="Filling workbook rows", unit="row")
+        row_iter = tqdm(row_iter, total=ws.max_row - 1, desc="Filling workbook rows", unit="row")
 
-    for row_idx in row_iter:
-        il_name = normalize_text(ws.cell(row_idx, il_col).value)
+    for row_idx, row in enumerate(row_iter, start=2):
+        il_name = normalize_text(row[il_col].value)
         if not il_name:
             continue
-        temp_key = number_key(ws.cell(row_idx, temp_col).value)
-        pressure_key = number_key(ws.cell(row_idx, pressure_col).value)
+        temperature = row[temp_col].value
+        pressure = row[pressure_col].value
+        temp_key = number_key(temperature)
+        pressure_key = number_key(pressure)
 
         for spec in property_specs:
             value_col = columns.get(spec.value_column)
             error_col = columns.get(spec.error_column)
             if value_col is None or error_col is None:
                 continue
-            value_cell = ws.cell(row_idx, value_col)
-            error_cell = ws.cell(row_idx, error_col)
+            value_cell = row[value_col - 1]
+            error_cell = row[error_col - 1]
             needs_value = is_blank(value_cell.value)
             needs_error = is_blank(error_cell.value)
             if not needs_value and not needs_error:
@@ -373,8 +389,8 @@ def fill_properties(
                         "row": row_idx,
                         "IL_Name": il_name,
                         "property": spec.name,
-                        "Temperature_K": ws.cell(row_idx, temp_col).value,
-                        "Pressure_kPa": ws.cell(row_idx, pressure_col).value,
+                        "Temperature_K": temperature,
+                        "Pressure_kPa": pressure,
                         "status": status,
                         "filled_actual": "",
                         "filled_error": "",
@@ -416,8 +432,8 @@ def fill_properties(
                     "row": row_idx,
                     "IL_Name": il_name,
                     "property": spec.name,
-                    "Temperature_K": ws.cell(row_idx, temp_col).value,
-                    "Pressure_kPa": ws.cell(row_idx, pressure_col).value,
+                    "Temperature_K": temperature,
+                    "Pressure_kPa": pressure,
                     "status": status,
                     "filled_actual": filled_actual,
                     "filled_error": filled_error,
@@ -492,6 +508,8 @@ def parse_args() -> argparse.Namespace:
         default=20.0,
         help="Seconds to wait for each ILThermo HTTP request before recording an error and continuing.",
     )
+    parser.add_argument("--request-retries", type=int, default=2)
+    parser.add_argument("--retry-backoff", type=float, default=1.0)
     return parser.parse_args()
 
 
@@ -520,6 +538,8 @@ def main() -> None:
         checkpoint_every=args.checkpoint_every,
         progress_every=args.progress_every,
         request_timeout=args.request_timeout,
+        request_retries=args.request_retries,
+        retry_backoff=args.retry_backoff,
         use_tqdm=not args.no_tqdm,
     )
     save_cache(args.cache, cache)

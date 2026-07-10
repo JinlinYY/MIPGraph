@@ -1,0 +1,5 @@
+stage,content
+User query,"[BMIM][NTf2]/[BMIM][BF4], 298.15-398.15 K, 101.325 kPa"
+Agent controller,"ion-pair validation, condition-grid planning, post-processing"
+MIPGraph engine,"Uni-Mol2 ion encoders, cross-ion attention, T/P FiLM, Physics-MoE, property heads"
+Agent report,"response atlas, fingerprint, routing shift, ranking, constraint map, Pareto view, recommendation"

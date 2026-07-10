@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-def get_logger(name: str = "MIPGraphNet", log_file: str | Path | None = None) -> logging.Logger:
+def get_logger(name: str = "MIPGraph", log_file: str | Path | None = None) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()

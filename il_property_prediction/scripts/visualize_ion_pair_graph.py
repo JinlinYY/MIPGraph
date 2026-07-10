@@ -153,7 +153,7 @@ def _draw_graph(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Visualize the actual PyG ion-pair graph used by MIPGraphNet.")
+    parser = argparse.ArgumentParser(description="Visualize the PyG ion-pair graph used by MIPGraph preprocessing.")
     parser.add_argument("--smiles", required=True)
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT_DIR / "ion_pair_graph.png"))

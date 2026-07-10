@@ -1,0 +1,8 @@
+field,value
+Top condition,[BMIM][BF4] at 398 K
+Agent score,0.88
+Electrical conductivity,5.09 S m^-1
+Viscosity,5.9 mPa s
+Selection reason,highest score over the 22-record condition grid
+Constraint status,passes conductivity and viscosity thresholds
+Use note,"model-guided screening, not experimental"

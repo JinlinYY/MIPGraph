@@ -1,4 +1,4 @@
-# Python
+# Python caches
 __pycache__/
 *.py[cod]
 *.pyo
@@ -16,28 +16,57 @@ env/
 # Local browser/session profiles
 .selenium_leskoff_profile/
 
-# Root data products and downloaded databases
+# Training outputs, logs, and temporary products
+outputs/
+**/outputs/
+logs/
+**/logs/
+tmp/
+**/tmp/
+training_artifacts/*
+!training_artifacts/README.md
+
+# Large local data products and downloaded databases
 data/raw/
-data/processed/
 data/cache/
 data/data/
 data/ILThermoPy-main/
 data/pyilt2-master/
 data/Smiles-TO-iUpac-Translator-main/
+il_property_prediction/data/pretrained/
 
-# Large generated outputs and reports
-outputs/
-experiments/*
-!experiments/README.md
-web/*
-!web/README.md
+# Model/checkpoint binaries are ignored unless explicitly released.
 *.pt
 *.pth
 *.ckpt
-!il_property_prediction/outputs/
-!il_property_prediction/outputs/**
-!il_property_prediction/data/
-!il_property_prediction/data/**
+*.safetensors
+*.bin
+*.pkl
+*.joblib
+!trained_weights/
+!trained_weights/**
+!trained_weights/**/*.pt
+!il_property_prediction/data/processed/*.pt
+!il_property_prediction/data/processed_ilthermo_interpolated/*.pt
+
+# Generated archives and local packaged copies
+*.zip
+*.tgz
+*.tar
+*.tar.gz
+*.7z
+
+# Local manuscript/result workspaces not needed for code release
+LaTex-MIPGraph/
+IL性质预测_改进版/
+web/
+
+# Experiment result products; keep experiment code and scripts trackable.
+experiments/**/outputs*/
+experiments/**/outputs/
+experiments/**/results/
+experiments/**/figures/
+experiments/**/tmp/
 
 # Manuscript drafts or local documents
 *.pdf

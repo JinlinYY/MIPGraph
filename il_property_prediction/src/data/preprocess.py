@@ -51,6 +51,7 @@ def preprocess_excel(
     processed_dir: str | Path,
     sheet_name: str = "Merged",
     properties: list[str] | None = None,
+    evaluation_reference_path: str | Path | None = None,
 ) -> dict[str, Any]:
     properties = properties or PROPERTY_NAMES
     raw_path = Path(raw_path)
@@ -58,6 +59,14 @@ def preprocess_excel(
     processed_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_excel(raw_path, sheet_name=sheet_name)
+    evaluation_reference = None
+    if evaluation_reference_path is not None:
+        evaluation_reference = pd.read_excel(evaluation_reference_path, sheet_name=sheet_name)
+        if len(evaluation_reference) != len(df):
+            raise ValueError("Evaluation reference and augmented workbook have different row counts")
+        for key in ("IL_Name", "Temperature_K"):
+            if key not in evaluation_reference.columns or not evaluation_reference[key].fillna("").equals(df[key].fillna("")):
+                raise ValueError(f"Evaluation reference row alignment failed for {key}")
     failed_rows: list[dict[str, Any]] = []
     for col in META_COLUMNS:
         if col not in df.columns:
@@ -70,11 +79,15 @@ def preprocess_excel(
     for idx in df.index[missing_temp]:
         failed_rows.append({"row_index": int(idx), "reason": "missing Temperature_K"})
     df = df.loc[~missing_temp].copy()
+    if evaluation_reference is not None:
+        evaluation_reference = evaluation_reference.loc[~missing_temp].copy()
 
     y = np.full((len(df), len(properties)), np.nan, dtype=np.float32)
     y_error = np.full_like(y, np.nan)
     mask = np.zeros_like(y, dtype=np.float32)
     error_mask = np.zeros_like(y, dtype=np.float32)
+    label_weight = np.ones_like(y, dtype=np.float32)
+    evaluation_mask = np.zeros_like(y, dtype=np.float32)
 
     report: dict[str, Any] = {
         "raw_rows": int(before),
@@ -94,6 +107,20 @@ def preprocess_excel(
             raise ValueError(f"Missing required column: {error_col}")
         values = _to_float_series(df[value_col])
         errors = _to_float_series(df[error_col])
+        source_col = f"{prop}_ValueSource"
+        source_counts: dict[str, int] = {}
+        if source_col in df.columns:
+            sources = df[source_col].fillna("").astype(str).str.strip().str.lower()
+            exact_copy = sources.eq("exact_condition_copy")
+            interpolated = sources.isin(
+                ["temperature_linear_interpolation", "temperature_log_interpolation"]
+            )
+            label_weight[exact_copy.to_numpy(), p_idx] = 0.5
+            label_weight[interpolated.to_numpy(), p_idx] = 0.25
+            source_counts = {
+                "exact_condition_copy": int(exact_copy.sum()),
+                "temperature_interpolation": int(interpolated.sum()),
+            }
         non_positive = values.notna() & (values <= 0)
         if non_positive.any():
             warnings.warn(f"{prop} has {int(non_positive.sum())} non-positive values; kept by default.")
@@ -101,12 +128,18 @@ def preprocess_excel(
         y_error[:, p_idx] = errors.to_numpy(dtype=np.float32, na_value=np.nan)
         mask[:, p_idx] = values.notna().to_numpy(dtype=np.float32)
         error_mask[:, p_idx] = errors.notna().to_numpy(dtype=np.float32)
+        if evaluation_reference is not None:
+            reference_values = _to_float_series(evaluation_reference[value_col])
+            evaluation_mask[:, p_idx] = reference_values.notna().to_numpy(dtype=np.float32)
+        else:
+            evaluation_mask[:, p_idx] = mask[:, p_idx] * (label_weight[:, p_idx] >= 1.0)
         valid = int(mask[:, p_idx].sum())
         report["properties"][prop] = {
             "label_count": valid,
             "missing_rate": float(1.0 - valid / max(len(df), 1)),
             "ActualValue": _stats(values),
             "ErrorValue": _stats(errors),
+            "value_sources": source_counts,
         }
         df[value_col] = values
         df[error_col] = errors
@@ -129,6 +162,8 @@ def preprocess_excel(
         mask=mask,
         y_error=y_error,
         error_mask=error_mask,
+        label_weight=label_weight,
+        evaluation_mask=evaluation_mask,
         temperature=df["Temperature_K"].to_numpy(dtype=np.float32),
         pressure=df["Pressure_kPa"].to_numpy(dtype=np.float32),
         sample_id=df["sample_id"].to_numpy(dtype=np.int64),

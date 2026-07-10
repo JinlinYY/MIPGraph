@@ -1,0 +1,10 @@
+figure,panel,panel_title,measure,value,unit,pct_il,ion_type,ion_family
+dataset_statistics,F,Major cation and anion families,family_il_count,655.0,ILs,58.22222222222222,cation,Imidazolium
+dataset_statistics,F,Major cation and anion families,family_il_count,166.0,ILs,14.755555555555556,cation,Pyridinium
+dataset_statistics,F,Major cation and anion families,family_il_count,120.0,ILs,10.666666666666666,cation,Phosphonium
+dataset_statistics,F,Major cation and anion families,family_il_count,102.0,ILs,9.066666666666666,cation,Other
+dataset_statistics,F,Major cation and anion families,family_il_count,82.0,ILs,7.288888888888889,cation,Quaternary ammonium
+dataset_statistics,F,Major cation and anion families,family_il_count,633.0,ILs,56.266666666666666,anion,Other
+dataset_statistics,F,Major cation and anion families,family_il_count,242.0,ILs,21.511111111111116,anion,NTf2
+dataset_statistics,F,Major cation and anion families,family_il_count,156.0,ILs,13.866666666666667,anion,Carboxylate
+dataset_statistics,F,Major cation and anion families,family_il_count,94.0,ILs,8.355555555555556,anion,Halide

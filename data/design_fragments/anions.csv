@@ -1,0 +1,7 @@
+name,smiles,family,charge,notes
+bf4,[B-](F)(F)(F)F,fluoroborate,-1,tetrafluoroborate starter fragment
+pf6,F[P-](F)(F)(F)(F)F,fluorophosphate,-1,hexafluorophosphate starter fragment
+tfsi,O=S(=O)([N-]S(=O)(=O)C(F)(F)F)C(F)(F)F,sulfonylimide,-1,bis(trifluoromethylsulfonyl)imide starter fragment
+dca,N#C[N-]C#N,cyanamide,-1,dicyanamide starter fragment
+acetate,CC(=O)[O-],carboxylate,-1,acetate starter fragment
+triflate,O=S(=O)([O-])C(F)(F)F,sulfonate,-1,triflate starter fragment

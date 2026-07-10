@@ -58,6 +58,7 @@ def save_metrics_csv(metrics: dict[str, Any], path: str | Path, property_names: 
                 "MAE": fmt(item.get("MAE")),
                 "RMSE": fmt(item.get("RMSE")),
                 "R2": fmt(item.get("R2")),
+                "NMAE": fmt(item.get("NMAE")),
             }
         )
     rows.append(
@@ -66,12 +67,13 @@ def save_metrics_csv(metrics: dict[str, Any], path: str | Path, property_names: 
             "MAE": fmt(metrics.get("macro_MAE")),
             "RMSE": fmt(metrics.get("macro_RMSE")),
             "R2": fmt(metrics.get("macro_R2")),
+            "NMAE": fmt(metrics.get("macro_NMAE")),
         }
     )
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=["property", "MAE", "RMSE", "R2"])
+        writer = csv.DictWriter(f, fieldnames=["property", "MAE", "RMSE", "R2", "NMAE"])
         writer.writeheader()
         writer.writerows(rows)
 
@@ -95,6 +97,7 @@ def save_log_metrics_csv(metrics: dict[str, Any], path: str | Path, property_nam
                 "log_MAE": fmt(item.get("log_MAE")),
                 "log_RMSE": fmt(item.get("log_RMSE")),
                 "log_R2": fmt(item.get("log_R2")),
+                "log_NMAE": fmt(item.get("log_NMAE")),
             }
         )
     rows.append(
@@ -103,12 +106,13 @@ def save_log_metrics_csv(metrics: dict[str, Any], path: str | Path, property_nam
             "log_MAE": fmt(log_metrics.get("macro_log_MAE")),
             "log_RMSE": fmt(log_metrics.get("macro_log_RMSE")),
             "log_R2": fmt(log_metrics.get("macro_log_R2")),
+            "log_NMAE": fmt(log_metrics.get("macro_log_NMAE")),
         }
     )
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=["property", "log_MAE", "log_RMSE", "log_R2"])
+        writer = csv.DictWriter(f, fieldnames=["property", "log_MAE", "log_RMSE", "log_R2", "log_NMAE"])
         writer.writeheader()
         writer.writerows(rows)
 

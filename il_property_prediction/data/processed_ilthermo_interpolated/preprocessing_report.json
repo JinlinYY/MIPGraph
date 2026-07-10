@@ -1,0 +1,139 @@
+{
+  "raw_rows": 37556,
+  "total_samples": 37556,
+  "unique_ils": 1125,
+  "properties": {
+    "Density": {
+      "label_count": 30487,
+      "missing_rate": 0.18822558312919369,
+      "ActualValue": {
+        "min": 780.0,
+        "max": 2150.0,
+        "mean": 1229.7773971766794,
+        "median": 1215.54
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 300.0,
+        "mean": 3.609522763432031,
+        "median": 2.1
+      },
+      "value_sources": {
+        "exact_condition_copy": 2044,
+        "temperature_interpolation": 10531
+      }
+    },
+    "ElectricalConductivity": {
+      "label_count": 15839,
+      "missing_rate": 0.5782564703376292,
+      "ActualValue": {
+        "min": 3e-14,
+        "max": 60.5,
+        "mean": 1.1391823062955215,
+        "median": 0.5244
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 1.4,
+        "mean": 0.04358670011783417,
+        "median": 0.01738000000000002
+      },
+      "value_sources": {
+        "exact_condition_copy": 1110,
+        "temperature_interpolation": 9684
+      }
+    },
+    "HeatCapacity": {
+      "label_count": 17530,
+      "missing_rate": 0.5332303759718819,
+      "ActualValue": {
+        "min": 93.0,
+        "max": 2040.0,
+        "mean": 537.545869424336,
+        "median": 491.6
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 420.0,
+        "mean": 27.167961446052615,
+        "median": 17.0
+      },
+      "value_sources": {
+        "exact_condition_copy": 831,
+        "temperature_interpolation": 6818
+      }
+    },
+    "SurfaceTension": {
+      "label_count": 14613,
+      "missing_rate": 0.6109010544253914,
+      "ActualValue": {
+        "min": 0.0155,
+        "max": 0.068175,
+        "mean": 0.038686995411642895,
+        "median": 0.03758
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 0.01,
+        "mean": 0.0009393160489040979,
+        "median": 0.0006
+      },
+      "value_sources": {
+        "exact_condition_copy": 2227,
+        "temperature_interpolation": 7232
+      }
+    },
+    "ThermalConductivity": {
+      "label_count": 6124,
+      "missing_rate": 0.8369368409841303,
+      "ActualValue": {
+        "min": 0.094,
+        "max": 0.255,
+        "mean": 0.15572913992610685,
+        "median": 0.15209208428635362
+      },
+      "ErrorValue": {
+        "min": 0.00085,
+        "max": 0.05,
+        "mean": 0.009061051438055957,
+        "median": 0.009004570591391198
+      },
+      "value_sources": {
+        "exact_condition_copy": 129,
+        "temperature_interpolation": 5152
+      }
+    },
+    "Viscosity": {
+      "label_count": 25619,
+      "missing_rate": 0.31784535094259236,
+      "ActualValue": {
+        "min": 2.4e-06,
+        "max": 2000000000.0,
+        "mean": 118393.67540004,
+        "median": 0.05051
+      },
+      "ErrorValue": {
+        "min": 0.0,
+        "max": 700000000.0,
+        "mean": 42073.76272829454,
+        "median": 0.0019
+      },
+      "value_sources": {
+        "exact_condition_copy": 1653,
+        "temperature_interpolation": 11883
+      }
+    }
+  },
+  "Temperature_K": {
+    "min": 101.325,
+    "max": 743.71,
+    "mean": 325.5918664128235,
+    "median": 320.27
+  },
+  "Pressure_kPa": {
+    "min": 90.0,
+    "max": 65000.0,
+    "mean": 269.75451453613977,
+    "median": 101.325
+  }
+}

@@ -1,0 +1,12 @@
+step,agent_action,output,panel_source,check,status,detail
+1.0,Parse query,"[BMIM]+, NTf2-/BF4-, T/P condition grid",action_trace,,,
+2.0,Validate ion pair,cation/anion roles assigned; neutral pairs retained,action_trace,,,
+3.0,Plan conditions,11 temperatures per pair; 22 IL-condition records,action_trace,,,
+4.0,Run MIPGraph,batch inference: 22 records x 6 properties,action_trace,,,
+5.0,Extract mechanisms,"Physics-MoE shifts: packing, cohesion, transport, thermal",action_trace,,,
+6.0,Assemble report,"atlas, fingerprint, routing map, ranking and score map",action_trace,,,
+,,,query_validation,Ion-pair syntax,PASS,2 ion-pair SMILES accepted
+,,,query_validation,Charge balance,PASS,[BMIM]+ paired with NTf2- and BF4-
+,,,query_validation,Condition grid,PASS,"298.15-398.15 K, 10 K step, 101.325 kPa"
+,,,query_validation,Batch completeness,PASS,22 records; six properties returned per record
+,,,query_validation,Mechanism metadata,PASS,4 Physics-MoE mechanisms available

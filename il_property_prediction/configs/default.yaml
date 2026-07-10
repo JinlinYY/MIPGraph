@@ -4,9 +4,9 @@ data:
   processed_dir: data/processed
   clean_csv: data/processed/il_multiprop_clean.csv
   arrays_path: data/processed/il_multiprop_arrays.npz
-  graph_cache_path: data/processed/graph_cache.pt
+  graph_cache_path: data/processed/graph_cache_fg.pt
   failed_smiles_path: data/processed/failed_smiles.csv
-  split_type: il_level
+  split_type: row_level
   train_ratio: 0.7
   val_ratio: 0.15
   test_ratio: 0.15
@@ -39,59 +39,62 @@ chem:
   seed: 42
 
 model:
-  name: MIPGraphNet
+  name: MIPGraph
   hidden_dim: 256
   latent_dim: 256
-  num_layers: 4
   dropout: 0.15
-  pooling: attention
-  graph_conv: GINE
-  use_3d_distance: true
-  use_cross_ion_edges: true
-  use_interaction_encoder: true
-  use_mechanistic_latent_heads: true
-  latent_names:
-    - packing
-    - cohesion
-    - transport
-    - thermal
-  use_property_latent_gating: true
-  use_condition_film: true
-  use_structured_decoder: true
-  use_neural_residual: true
-  residual_scale: 0.1
-  use_property_coupling: true
-  atom_feature_dim: 45
-  edge_feature_dim: 12
-  edge_type_index: 9
-  use_e3_invariant_geometry: true
-  rbf_num_centers: 32
-  rbf_cutoff: 6.0
+  ion_encoder: unimol2
+  unimol2_model_size: 84m
+  unimol2_weight_dir: data/pretrained/unimol2
+  unimol2_feature_cache_path: data/processed/unimol2_ion_features.pt
+  freeze_unimol2_backbone: true
+  unimol2_unfreeze_last_n_layers: 0
+  unimol2_projection_dropout: 0.1
+  use_atom_cross_attention: true
+  cross_attention_heads: 8
+  cross_attention_dropout: 0.1
+  fusion_mode: transformer
   use_global_descriptors: true
   global_descriptor_dim: 56
+  use_functional_group_descriptors: true
+  functional_group_dim: 80
+  use_transformer_fusion: true
+  transformer_fusion_layers: 2
+  transformer_fusion_heads: 8
+  transformer_fusion_dropout: 0.1
+  use_condition_film: true
+  use_property_coupling: false
+  use_property_adapters: false
+  physics_moe_top_k: 2
+  physics_moe_router_temperature: 1.0
+  physics_moe_prior_strength: 1.0
+  property_head_hidden_dim: 512
+  property_head_depth: 3
+  property_head_dropout: 0.15
 
 training:
-  batch_size: 128
-  epochs: 300
-  lr: 0.0005
+  batch_size: 64
+  epochs: 100
+  lr: 0.00005
+  backbone_lr: 0.00001
   weight_decay: 0.00001
   patience: 40
   gradient_clip_norm: 5.0
   device: auto
-  num_workers: 4
+  num_workers: 0
   pin_memory: true
-  persistent_workers: true
+  persistent_workers: false
   prefetch_factor: 2
-  use_amp: true
+  use_amp: false
   validate_every: 2
-  monitor_metric: macro_MAE
-  monitor_mode: min
+  monitor_metric: macro_log_val_score
+  monitor_mode: max
   seed: 42
 
 loss:
   type: masked_weighted_mse
   use_error_weight: true
-  balance_properties: false
+  balance_properties: true
   property_loss_weights:
     Density: 1.0
     ElectricalConductivity: 2.0
@@ -100,23 +103,33 @@ loss:
     ThermalConductivity: 1.5
     Viscosity: 2.0
   high_value_weighting: {}
-  # Example for viscosity-tail fine-tuning:
-  # high_value_weighting:
-  #   Viscosity:
-  #     threshold_scaled: 1.0
-  #     multiplier: 3.0
   error_weight_clip_min: 0.1
   error_weight_clip_max: 10.0
   use_residual_penalty: false
   residual_penalty_weight: 0.0
-  use_latent_orthogonality: false
-  latent_orthogonality_weight: 0.0
+  use_latent_orthogonality: true
+  latent_orthogonality_weight: 0.002
   use_gate_entropy_penalty: false
   gate_entropy_weight: 0.0
+  use_moe_load_balance_loss: true
+  moe_load_balance_weight: 0.005
+  use_moe_prior_loss: true
+  moe_prior_weight: 0.01
   use_surface_tension_monotonic_reg: false
   surface_tension_monotonic_weight: 0.0
   use_density_monotonic_reg: false
   density_monotonic_weight: 0.0
+
+augmentation:
+  enabled: false
+  method: same_il_pressure_temperature_log_interpolation
+  properties: []
+  points_per_interval: 1
+  max_temperature_gap: 40.0
+  pressure_round_decimals: 1
+  sample_weight: 0.5
+  max_samples_per_property: 0
+  seed: 42
 
 outputs:
   run_name: default

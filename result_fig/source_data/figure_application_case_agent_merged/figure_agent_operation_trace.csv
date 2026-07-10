@@ -1,0 +1,7 @@
+step,agent_action,output
+1,Parse query,"[BMIM]+, NTf2-/BF4-, T/P condition grid"
+2,Validate ion pair,cation/anion roles assigned; neutral pairs retained
+3,Plan conditions,11 temperatures per pair; 22 IL-condition records
+4,Run MIPGraph,batch inference: 22 records x 6 properties
+5,Extract mechanisms,"Physics-MoE shifts: packing, cohesion, transport, thermal"
+6,Assemble report,"atlas, fingerprint, routing map, ranking and score map"

@@ -1,0 +1,6 @@
+check,status,detail
+Ion-pair syntax,PASS,2 ion-pair SMILES accepted
+Charge balance,PASS,[BMIM]+ paired with NTf2- and BF4-
+Condition grid,PASS,"298.15-398.15 K, 10 K step, 101.325 kPa"
+Batch completeness,PASS,22 records; six properties returned per record
+Mechanism metadata,PASS,4 Physics-MoE mechanisms available

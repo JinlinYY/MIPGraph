@@ -1,0 +1,4 @@
+figure,panel,panel_title,measure,value,unit,pressure_category,pressure_min_kpa,pressure_max_kpa
+dataset_statistics,H,Pressure coverage,pressure_record_count,24842.0,records,ambient_101.325_kpa,90.0,65000.0
+dataset_statistics,H,Pressure coverage,pressure_record_count,7560.0,records,non_ambient_reported,90.0,65000.0
+dataset_statistics,H,Pressure coverage,pressure_record_count,5154.0,records,missing_pressure,90.0,65000.0

@@ -1,5 +1,6 @@
-"""Model implementations for MIPGraphNet and baselines."""
+"""Model implementation for MIPGraph."""
 
-from .mipgraphnet import MIPGraphNet
+from .factory import build_model
+from .mipgraph import MIPGraph
 
-__all__ = ["MIPGraphNet"]
+__all__ = ["MIPGraph", "build_model"]

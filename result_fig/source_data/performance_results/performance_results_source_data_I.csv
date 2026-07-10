@@ -1,0 +1,25 @@
+split_strategy,property,log_NMAE,panel,panel_title
+Random point,Density,0.0307677656562546,I,Property-wise log-space NMAE
+Random IL,Density,0.1418735770555277,I,Property-wise log-space NMAE
+Balanced IL,Density,0.1630090323816469,I,Property-wise log-space NMAE
+Ion-family,Density,0.1975241700350671,I,Property-wise log-space NMAE
+Random point,Viscosity,0.0578176397269209,I,Property-wise log-space NMAE
+Random IL,Viscosity,0.2458596786381826,I,Property-wise log-space NMAE
+Balanced IL,Viscosity,0.275707863288524,I,Property-wise log-space NMAE
+Ion-family,Viscosity,0.2787637165918483,I,Property-wise log-space NMAE
+Random point,ElectricalConductivity,0.0565983319029418,I,Property-wise log-space NMAE
+Random IL,ElectricalConductivity,0.1296880889015872,I,Property-wise log-space NMAE
+Balanced IL,ElectricalConductivity,0.2546122162961126,I,Property-wise log-space NMAE
+Ion-family,ElectricalConductivity,0.190710662888657,I,Property-wise log-space NMAE
+Random point,HeatCapacity,0.0385862318170225,I,Property-wise log-space NMAE
+Random IL,HeatCapacity,0.2069983098897428,I,Property-wise log-space NMAE
+Balanced IL,HeatCapacity,0.1715885718557806,I,Property-wise log-space NMAE
+Ion-family,HeatCapacity,0.3481548662963094,I,Property-wise log-space NMAE
+Random point,SurfaceTension,0.0928783182624197,I,Property-wise log-space NMAE
+Random IL,SurfaceTension,0.4013138038492949,I,Property-wise log-space NMAE
+Balanced IL,SurfaceTension,0.3559268759685101,I,Property-wise log-space NMAE
+Ion-family,SurfaceTension,0.331165716380249,I,Property-wise log-space NMAE
+Random point,ThermalConductivity,0.1075641912320118,I,Property-wise log-space NMAE
+Random IL,ThermalConductivity,0.20168942349027,I,Property-wise log-space NMAE
+Balanced IL,ThermalConductivity,0.2645374684346265,I,Property-wise log-space NMAE
+Ion-family,ThermalConductivity,0.5453472857522098,I,Property-wise log-space NMAE
