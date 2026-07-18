@@ -123,6 +123,17 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
         value = float(config["reference_cell"].get(key, float("nan")))
         if not np.isfinite(value) or value <= 0.0:
             raise ValueError(f"reference_cell.{key} must be finite and positive")
+        if key == "exposed_face_count" and not value.is_integer():
+            raise ValueError("reference_cell.exposed_face_count must be an integer")
+    risk_quantiles = list(
+        config["reference_cell"].get("risk_reference_quantiles", [])
+    )
+    if len(risk_quantiles) != 2 or not np.allclose(
+        risk_quantiles, [0.75, 0.95], rtol=0.0, atol=1.0e-12
+    ):
+        raise ValueError(
+            "reference_cell.risk_reference_quantiles must be exactly [0.75, 0.95]"
+        )
     reference_temperature = float(config["reference_cell"]["reference_temperature_K"])
     if not np.isclose(temperature_grid(config["conditions"]), reference_temperature).any():
         raise ValueError(

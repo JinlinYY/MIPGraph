@@ -568,7 +568,7 @@ def _cell_curve_panel(
 
 def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
     ax = container.subplots()
-    _title(ax, "g", "Low/high-temperature conductivity retention")
+    _title(ax, "g", "Low/high-temperature resistance retention")
     summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
     final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
     if summary.empty:
@@ -590,14 +590,14 @@ def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
     width = 0.36
     ax.bar(
         x - width / 2,
-        display["low_temperature_conductivity_retention_pct"],
+        display["low_temperature_resistance_retention_pct"],
         width,
         label="Low T / reference T",
         color=COLORS["blue"],
     )
     ax.bar(
         x + width / 2,
-        display["high_temperature_conductivity_retention_pct"],
+        display["high_temperature_resistance_retention_pct"],
         width,
         label="High T / reference T",
         color=COLORS["orange"],
@@ -605,14 +605,14 @@ def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
     ax.axhline(100.0, color=COLORS["gray"], linewidth=1.0, linestyle="--")
     ax.set_xticks(x)
     ax.set_xticklabels(display["candidate_id"], rotation=35, ha="right", fontsize=6.5)
-    ax.set_ylabel("Conductivity retention (%)")
+    ax.set_ylabel("Resistance / reference-T resistance (%)")
     ax.legend(frameon=False, fontsize=6.5)
     _style_axis(ax)
 
 
 def _cell_panel_h(container: Any, paths: dict[str, Path]) -> None:
     ax = container.subplots()
-    _title(ax, "h", "Worst-temperature comparative operating risk")
+    _title(ax, "h", "Numeric risk maximum vs. most severe risk band")
     summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
     if summary.empty:
         _empty(ax, "Reference-cell summary unavailable")
@@ -628,14 +628,25 @@ def _cell_panel_h(container: Any, paths: dict[str, Path]) -> None:
         "elevated_reference_tail": "^",
         "beyond_reference_tail": "X",
     }
+    ax.scatter(
+        unseen["reference_cell_risk_index_worst_temperature_K"] - 273.15,
+        unseen["reference_cell_risk_index_worst"],
+        label="maximum numeric q75 ratio",
+        facecolors="none",
+        edgecolors=COLORS["gray"],
+        marker="o",
+        s=19,
+        alpha=0.5,
+        linewidths=0.55,
+    )
     for band in palette:
         group = unseen[unseen["reference_cell_risk_band_worst"].eq(band)]
         if group.empty:
             continue
         ax.scatter(
-            group["reference_cell_worst_temperature_K"] - 273.15,
-            group["reference_cell_risk_index_worst"],
-            label=band.replace("_", " "),
+            group["reference_cell_risk_band_worst_temperature_K"] - 273.15,
+            group["reference_cell_risk_index_at_band_worst"],
+            label="band: " + band.replace("_", " "),
             color=palette[band],
             marker=markers[band],
             s=26,
@@ -644,8 +655,8 @@ def _cell_panel_h(container: Any, paths: dict[str, Path]) -> None:
             linewidths=0.4,
         )
     ax.axhline(1.0, color=COLORS["gray"], linestyle="--", linewidth=1.0)
-    ax.set_xlabel("Worst ambient temperature (°C)")
-    ax.set_ylabel("Worst q75-relative risk index")
+    ax.set_xlabel("Ambient temperature of each reported extreme (°C)")
+    ax.set_ylabel("q75-relative risk index")
     ax.legend(frameon=False, fontsize=6.2)
     _style_axis(ax)
 
@@ -654,7 +665,12 @@ def _reference_cell_renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any
     return {
         "a": lambda container: _cell_panel_a(container, paths),
         "b": lambda container: _cell_curve_panel(
-            container, paths, "b", "Relative electrolyte-path resistance", "electrolyte_resistance_ohm", "Ideal electrolyte resistance (Ω)"
+            container,
+            paths,
+            "b",
+            "Relative electrolyte-path resistance",
+            "relative_electrolyte_resistance",
+            r"$R(T)/R(298.15\,K)$",
         ),
         "c": lambda container: _cell_curve_panel(
             container, paths, "c", "Electrolyte RC contribution", "electrolyte_RC_time_constant_s", "Electrolyte-only RC time (s)"

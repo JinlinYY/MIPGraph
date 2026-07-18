@@ -744,7 +744,16 @@ class CasePipeline:
         write_csv(summary, self._data_path("reference_cell_candidate_summary.csv"))
         ensemble_rows = 0
         member_proxy_path = self._data_path("application_proxies_by_checkpoint.csv")
-        if member_proxy_path.exists():
+        inference_metadata = json.loads(
+            (self.paths["audit"] / "inference_pipeline.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        if bool(inference_metadata.get("ensemble_enabled", False)):
+            if not member_proxy_path.exists():
+                raise FileNotFoundError(
+                    "Ensemble inference requires per-checkpoint proxy rows"
+                )
             member_proxies = pd.read_csv(member_proxy_path)
             member_frames: list[pd.DataFrame] = []
             for checkpoint_name, group in member_proxies.groupby(

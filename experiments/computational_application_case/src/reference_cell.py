@@ -50,11 +50,18 @@ def _validated_scenario(
         value = float(config[field])
         if not np.isfinite(value) or value <= 0.0:
             raise ValueError(f"reference_cell.{field} must be finite and positive")
+        if field == "exposed_face_count" and not value.is_integer():
+            raise ValueError("reference_cell.exposed_face_count must be an integer")
         scenario[field] = int(value) if field == "exposed_face_count" else value
     quantiles = [float(value) for value in config["risk_reference_quantiles"]]
     if len(quantiles) != 2 or not 0.0 < quantiles[0] < quantiles[1] < 1.0:
         raise ValueError(
             "reference_cell.risk_reference_quantiles must contain two ordered values in (0, 1)"
+        )
+    if not np.allclose(quantiles, [0.75, 0.95], rtol=0.0, atol=1.0e-12):
+        raise ValueError(
+            "reference_cell.risk_reference_quantiles must be exactly [0.75, 0.95] "
+            "because the persisted risk schema names q75 and q95 explicitly"
         )
     scenario["risk_reference_quantiles"] = quantiles
     scenario["scenario_name"] = str(
@@ -168,7 +175,11 @@ def _summarize_reference_cell_metrics(
             ["reference_cell_risk_index", "temperature_K"],
             ascending=[False, True],
         )
-        worst = worst_candidates.iloc[0]
+        worst_band = worst_candidates.iloc[0]
+        worst_index = group.sort_values(
+            ["reference_cell_risk_index", "temperature_K"],
+            ascending=[False, True],
+        ).iloc[0]
 
         def maximum(metric: str) -> tuple[float, float]:
             index = int(group[metric].astype(float).idxmax())
@@ -204,6 +215,12 @@ def _summarize_reference_cell_metrics(
                 "high_temperature_resistance_ratio_to_reference": high_resistance
                 / reference_resistance,
                 "high_to_low_temperature_resistance_ratio": high_resistance / low_resistance,
+                "low_temperature_resistance_retention_pct": 100.0
+                * low_resistance
+                / reference_resistance,
+                "high_temperature_resistance_retention_pct": 100.0
+                * high_resistance
+                / reference_resistance,
                 "low_temperature_conductivity_retention_pct": 100.0
                 * reference_resistance
                 / low_resistance,
@@ -221,14 +238,28 @@ def _summarize_reference_cell_metrics(
                 "transient_temperature_rise_K_worst": maximum_transient_rise,
                 "transient_temperature_rise_worst_temperature_K": maximum_transient_temperature,
                 "reference_cell_risk_index_worst": float(
-                    worst["reference_cell_risk_index"]
+                    worst_index["reference_cell_risk_index"]
                 ),
                 "reference_cell_risk_band_worst": str(
-                    worst["reference_cell_risk_band"]
+                    worst_band["reference_cell_risk_band"]
                 ),
-                "reference_cell_worst_temperature_K": float(worst["temperature_K"]),
+                "reference_cell_worst_temperature_K": float(
+                    worst_index["temperature_K"]
+                ),
+                "reference_cell_risk_index_worst_temperature_K": float(
+                    worst_index["temperature_K"]
+                ),
                 "reference_cell_risk_reason_worst": str(
-                    worst["reference_cell_risk_reason"]
+                    worst_index["reference_cell_risk_reason"]
+                ),
+                "reference_cell_risk_index_at_band_worst": float(
+                    worst_band["reference_cell_risk_index"]
+                ),
+                "reference_cell_risk_band_worst_temperature_K": float(
+                    worst_band["temperature_K"]
+                ),
+                "reference_cell_risk_band_reason_worst": str(
+                    worst_band["reference_cell_risk_reason"]
                 ),
                 "scenario_interpretation": "conditional_liquid_phase_not_verified",
             }
@@ -316,8 +347,15 @@ def simulate_reference_cell_scenario(
     )
     output["scenario_interpretation"] = "conditional_liquid_phase_not_verified"
     output = output.sort_values(["candidate_id", "temperature_K"]).reset_index(drop=True)
+    summary_source = (
+        output[output["analysis_window"].eq("main")].copy()
+        if "analysis_window" in output
+        else output
+    )
+    if summary_source.empty:
+        raise ValueError("Reference-cell primary summary requires analysis_window='main' rows")
     summary = _summarize_reference_cell_metrics(
-        output, float(scenario["reference_temperature_K"])
+        summary_source, float(scenario["reference_temperature_K"])
     )
     metadata = {
         "model_scope": "conditional_reference_cell_scenario",
@@ -335,7 +373,9 @@ def simulate_reference_cell_scenario(
         "risk_definition": (
             "At each temperature, electrical resistance and transient temperature rise "
             "are compared with observed-reference q75/q95 values. The worst band and "
-            "maximum q75 ratio are comparative priorities, not safety limits."
+            "maximum q75 ratio are comparative priorities, not safety limits; because "
+            "they can occur at different temperatures, both extrema retain separate "
+            "temperature fields."
         ),
     }
     return output, summary, metadata

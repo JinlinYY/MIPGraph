@@ -109,7 +109,7 @@ The thermal model uses a series electrolyte-conduction and external-convection r
 \left[1-\exp\left(-t/(R_\mathrm{th}C_\mathrm{th})\right)\right].
 \]
 
-Every candidate receives absolute and reference-temperature-normalized resistance, electrolyte-only RC contribution, Joule power, steady and transient temperature rise, low/high-temperature conductivity retention, and a worst-temperature comparative risk. Risk bands are calibrated at each temperature from observed-reference q75/q95 resistance and transient-rise distributions. They are prioritization bands, not thermal-safety thresholds.
+Every candidate receives absolute and reference-temperature-normalized resistance, electrolyte-only RC contribution, Joule power, steady and transient temperature rise, explicit low/high-temperature resistance retention, the corresponding conductivity retention, and a worst-temperature comparative risk. Risk bands are calibrated at each temperature from observed-reference q75/q95 resistance and transient-rise distributions. The maximum numeric q75-relative index and the most severe categorical q95-tail band are stored with their own temperatures because they need not occur at the same condition. These are prioritization measures, not thermal-safety thresholds.
 
 The model does not include electrode/contact resistance, current collectors, packaging, leakage, reaction heat, electrochemical stability, or a predicted capacitance. Liquid phase is conditionally assumed throughout the configured window and must be established independently.
 

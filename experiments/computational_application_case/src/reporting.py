@@ -72,9 +72,14 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "steady_state_temperature_rise_K_worst",
         "transient_temperature_rise_K_worst",
         "low_temperature_conductivity_retention_pct",
+        "low_temperature_resistance_retention_pct",
+        "high_temperature_resistance_retention_pct",
         "reference_cell_risk_index_worst",
         "reference_cell_risk_band_worst",
         "reference_cell_worst_temperature_K",
+        "reference_cell_risk_index_worst_temperature_K",
+        "reference_cell_risk_index_at_band_worst",
+        "reference_cell_risk_band_worst_temperature_K",
         "main_advantage",
         "main_limitation",
         "downstream_priority",
@@ -100,9 +105,14 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
             "steady_state_temperature_rise_K_worst": "Worst conditional steady temperature rise (K)",
             "transient_temperature_rise_K_worst": "Worst conditional transient temperature rise (K)",
             "low_temperature_conductivity_retention_pct": "Low-temperature conductivity retention (%)",
+            "low_temperature_resistance_retention_pct": "Low-temperature resistance retention (%)",
+            "high_temperature_resistance_retention_pct": "High-temperature resistance retention (%)",
             "reference_cell_risk_index_worst": "Worst reference-cell risk index",
             "reference_cell_risk_band_worst": "Worst reference-cell risk band",
             "reference_cell_worst_temperature_K": "Worst reference-cell temperature (K)",
+            "reference_cell_risk_index_worst_temperature_K": "Maximum numeric risk-index temperature (K)",
+            "reference_cell_risk_index_at_band_worst": "Risk index at most severe risk-band temperature",
+            "reference_cell_risk_band_worst_temperature_K": "Most severe risk-band temperature (K)",
             "main_advantage": "Main advantage",
             "main_limitation": "Main limitation",
             "downstream_priority": "Downstream qualification priority",
@@ -181,6 +191,8 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
             "low_temperature_K",
             "high_temperature_K",
             "low_temperature_conductivity_retention_pct",
+            "low_temperature_resistance_retention_pct",
+            "high_temperature_resistance_retention_pct",
             "electrolyte_resistance_ohm_worst",
             "electrolyte_RC_time_constant_s_worst",
             "joule_heating_power_W_worst",
@@ -188,7 +200,9 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
             "transient_temperature_rise_K_worst",
             "reference_cell_risk_index_worst",
             "reference_cell_risk_band_worst",
-            "reference_cell_worst_temperature_K",
+            "reference_cell_risk_index_worst_temperature_K",
+            "reference_cell_risk_index_at_band_worst",
+            "reference_cell_risk_band_worst_temperature_K",
         ]
     )
     write_csv(cell_table, paths["tables"] / "reference_cell_candidate_summary.csv")
@@ -234,9 +248,13 @@ def _candidate_bullets(final: pd.DataFrame) -> list[str]:
             scenario = (
                 f" Conditional scenario: worst ideal electrolyte resistance "
                 f"{_fmt(row.electrolyte_resistance_ohm_worst)} ohm, worst transient "
-                f"rise {_fmt(row.transient_temperature_rise_K_worst)} K, low-temperature "
-                f"conductivity retention {_fmt(row.low_temperature_conductivity_retention_pct)}%, "
-                f"comparative risk `{row.reference_cell_risk_band_worst}`."
+                f"rise {_fmt(row.transient_temperature_rise_K_worst)} K, low/high-temperature "
+                f"resistance retention {_fmt(row.low_temperature_resistance_retention_pct)}%/"
+                f"{_fmt(row.high_temperature_resistance_retention_pct)}%, "
+                f"maximum risk index {_fmt(row.reference_cell_risk_index_worst)} at "
+                f"{_fmt(row.reference_cell_risk_index_worst_temperature_K)} K; most severe "
+                f"band `{row.reference_cell_risk_band_worst}` at "
+                f"{_fmt(row.reference_cell_risk_band_worst_temperature_K)} K."
             )
         lines.append(
             f"- `{row.candidate_id}` ({row.recommendation_class}, {row.AD_status}, Pareto rank {int(row.Pareto_rank)}): advantage `{row.main_advantage}`; limitation `{row.main_limitation}`; next priority: {row.downstream_priority}.{scenario}"

@@ -174,6 +174,118 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
         "relative electrolyte resistance",
     )
     checks["conditional_reference_cell_equations_exact"] = True
+    main_cell_metrics = (
+        cell_metrics[cell_metrics["analysis_window"].eq("main")]
+        if "analysis_window" in cell_metrics
+        else cell_metrics
+    )
+    expected_retention: dict[str, tuple[float, float]] = {}
+    reference_temperature = float(scenario["reference_temperature_K"])
+    for candidate_id, group in main_cell_metrics.groupby("candidate_id"):
+        group = group.sort_values("temperature_K")
+        reference_resistance = float(
+            group.loc[
+                np.isclose(group["temperature_K"], reference_temperature),
+                "electrolyte_resistance_ohm",
+            ].iloc[0]
+        )
+        expected_retention[str(candidate_id)] = (
+            100.0 * float(group["electrolyte_resistance_ohm"].iloc[0]) / reference_resistance,
+            100.0 * float(group["electrolyte_resistance_ohm"].iloc[-1]) / reference_resistance,
+        )
+    expected_retention_frame = pd.DataFrame.from_dict(
+        expected_retention,
+        orient="index",
+        columns=[
+            "expected_low_temperature_resistance_retention_pct",
+            "expected_high_temperature_resistance_retention_pct",
+        ],
+    ).rename_axis("candidate_id").reset_index()
+    audited_retention = cell_summary.assign(
+        candidate_id=cell_summary["candidate_id"].astype(str)
+    ).merge(expected_retention_frame, on="candidate_id", validate="one_to_one")
+    _assert_close(
+        audited_retention["low_temperature_resistance_retention_pct"],
+        audited_retention["expected_low_temperature_resistance_retention_pct"],
+        "low-temperature resistance retention",
+    )
+    _assert_close(
+        audited_retention["high_temperature_resistance_retention_pct"],
+        audited_retention["expected_high_temperature_resistance_retention_pct"],
+        "high-temperature resistance retention",
+    )
+    checks["high_low_temperature_resistance_retention_exact"] = True
+    expected_worst_risk = (
+        main_cell_metrics.groupby("candidate_id", as_index=False)[
+            "reference_cell_risk_index"
+        ]
+        .max()
+        .rename(
+            columns={
+                "reference_cell_risk_index": "expected_reference_cell_risk_index_worst"
+            }
+        )
+    )
+    audited_risk = cell_summary.assign(
+        candidate_id=cell_summary["candidate_id"].astype(str)
+    ).merge(
+        expected_worst_risk.assign(
+            candidate_id=expected_worst_risk["candidate_id"].astype(str)
+        ),
+        on="candidate_id",
+        validate="one_to_one",
+    )
+    _assert_close(
+        audited_risk["reference_cell_risk_index_worst"],
+        audited_risk["expected_reference_cell_risk_index_worst"],
+        "worst-temperature reference-cell risk index",
+    )
+    band_order = {
+        "within_reference_envelope": 0,
+        "elevated_reference_tail": 1,
+        "beyond_reference_tail": 2,
+    }
+    expected_band_rows = []
+    for candidate_id, group in main_cell_metrics.groupby("candidate_id"):
+        order = group["reference_cell_risk_band"].map(band_order)
+        selected = group[order.eq(order.max())].sort_values(
+            ["reference_cell_risk_index", "temperature_K"],
+            ascending=[False, True],
+        ).iloc[0]
+        expected_band_rows.append(
+            {
+                "candidate_id": str(candidate_id),
+                "expected_reference_cell_risk_band_worst": selected[
+                    "reference_cell_risk_band"
+                ],
+                "expected_reference_cell_risk_index_at_band_worst": selected[
+                    "reference_cell_risk_index"
+                ],
+                "expected_reference_cell_risk_band_worst_temperature_K": selected[
+                    "temperature_K"
+                ],
+            }
+        )
+    audited_bands = cell_summary.assign(
+        candidate_id=cell_summary["candidate_id"].astype(str)
+    ).merge(pd.DataFrame(expected_band_rows), on="candidate_id", validate="one_to_one")
+    if not audited_bands["reference_cell_risk_band_worst"].equals(
+        audited_bands["expected_reference_cell_risk_band_worst"]
+    ):
+        raise AssertionError("Worst categorical reference-cell risk band is inconsistent")
+    _assert_close(
+        audited_bands["reference_cell_risk_index_at_band_worst"],
+        audited_bands["expected_reference_cell_risk_index_at_band_worst"],
+        "risk index at worst categorical band",
+    )
+    _assert_close(
+        audited_bands["reference_cell_risk_band_worst_temperature_K"],
+        audited_bands[
+            "expected_reference_cell_risk_band_worst_temperature_K"
+        ],
+        "temperature of worst categorical risk band",
+    )
+    checks["worst_temperature_reference_cell_risk_exact"] = True
     checks["reference_cell_summary_complete"] = bool(
         cell_summary["candidate_id"].nunique() == library["candidate_id"].nunique()
         and set(cell_summary["reference_cell_risk_band_worst"]).issubset(
