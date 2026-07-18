@@ -1,0 +1,117 @@
+project:
+  root: auto
+  random_seed: 42
+
+model:
+  config_path: il_property_prediction/configs/physics_moe_fg_transformer.yaml
+  checkpoint_path: il_property_prediction/outputs/fg_transformer_random_point_seed42/checkpoints/unimol2_fg_transformer_random_point_seed42/best_model_pid68732_epoch012.pt
+  checkpoint_paths: []
+  device: auto
+  batch_size: 64
+  num_workers: 0
+  strict_checkpoint_loading: true
+  graph_cache_path: il_property_prediction/data/processed/graph_cache_fg.pt
+  unimol2_feature_cache_path: il_property_prediction/data/processed/unimol2_ion_features.pt
+
+data:
+  benchmark_path: il_property_prediction/data/processed/il_multiprop_clean.csv
+  arrays_path: il_property_prediction/data/processed/il_multiprop_arrays.npz
+  split_path: il_property_prediction/data/processed/splits/row_level_seed42.json
+  training_split_name: train
+  property_order: auto
+  units: auto
+  audited_units:
+    Density: kg m^-3
+    ElectricalConductivity: S m^-1
+    HeatCapacity: J mol^-1 K^-1
+    SurfaceTension: N m^-1
+    ThermalConductivity: W m^-1 K^-1
+    Viscosity: Pa s
+
+candidate_generation:
+  min_cation_support: 5
+  min_anion_support: 5
+  max_cations: 30
+  max_anions: 30
+  max_candidates: 600
+  descriptor_prefilter_multiplier: 5
+  require_monovalent_1to1: true
+  exclude_observed_pairs: true
+  include_observed_references: true
+  max_observed_references: 30
+  allow_one_ion_extrapolation: false
+
+conditions:
+  temperature_start_K: 298.15
+  temperature_end_K: 353.15
+  temperature_step_K: 5.0
+  pressure_kPa: 101.325
+  extended_temperature_start_K: 278.15
+  extended_temperature_end_K: 373.15
+  run_extended_sensitivity: false
+
+proxies:
+  thermal_length_m: 0.001
+  electrolyte_volume_mL: 1.0
+  numerical_epsilon: 1.0e-12
+  reference_gamma_low_quantile: 0.10
+  reference_gamma_high_quantile: 0.90
+
+curve_quality:
+  adjacent_relative_jump_quantile: 0.99
+  numerical_explosion_factor: 10.0
+  severe_nonpositive: true
+
+applicability_domain:
+  reference_domain: training
+  descriptor_knn_k: 5
+  in_domain_quantile: 0.90
+  borderline_quantile: 0.95
+  use_embedding_distance: auto
+  minimum_ion_support_for_in_domain: 5
+
+uncertainty:
+  mode: auto
+  ensemble_min_checkpoints: 3
+  monte_carlo_samples: 1000
+  conformal_alpha: 0.05
+
+screening:
+  conductivity_min_reference_quantile: 0.25
+  viscosity_max_reference_quantile: 0.75
+  volumetric_heat_capacity_min_reference_quantile: 0.25
+  thermal_diffusivity_min_reference_quantile: 0.25
+  interfacial_deviation_max: 1.0
+  exclude_out_of_domain: true
+  exclude_severe_curve_failures: true
+
+pareto:
+  objectives:
+    maximize:
+      - conductivity_worst
+      - volumetric_heat_capacity_worst
+      - thermal_diffusivity_worst
+    minimize:
+      - viscosity_worst
+      - interfacial_deviation_worst
+  final_candidate_min: 3
+  final_candidate_max: 8
+
+counterfactuals:
+  temperatures_K:
+    - 298.15
+    - 323.15
+    - 348.15
+
+figures:
+  dpi: 600
+  formats:
+    - png
+    - pdf
+  make_combined_figure: true
+  make_individual_panels: true
+  simplified: false
+
+outputs:
+  output_dir: experiments/computational_application_case/outputs
+

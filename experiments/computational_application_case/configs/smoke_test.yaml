@@ -1,0 +1,29 @@
+extends: default.yaml
+
+model:
+  device: cpu
+  batch_size: 16
+  num_workers: 0
+
+candidate_generation:
+  max_cations: 8
+  max_anions: 8
+  max_candidates: 10
+  max_observed_references: 5
+  descriptor_prefilter_multiplier: 2
+
+conditions:
+  temperature_start_K: 298.15
+  temperature_end_K: 308.15
+  temperature_step_K: 5.0
+  run_extended_sensitivity: false
+
+uncertainty:
+  monte_carlo_samples: 20
+
+figures:
+  dpi: 150
+  simplified: true
+
+outputs:
+  output_dir: experiments/computational_application_case/outputs/smoke_test

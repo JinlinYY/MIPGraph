@@ -1,0 +1,4 @@
+# No extra dependencies beyond il_property_prediction/requirements.txt.
+# The case reuses numpy, pandas, scikit-learn, matplotlib, RDKit, PyYAML,
+# PyTorch, PyTorch Geometric, openpyxl, and the current Uni-Mol2 runtime.
+
