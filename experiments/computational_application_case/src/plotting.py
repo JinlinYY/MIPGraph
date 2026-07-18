@@ -25,6 +25,17 @@ PANEL_FILES = {
     "h": "panel_h_candidates",
 }
 
+REFERENCE_CELL_PANEL_FILES = {
+    "a": "cell_panel_a_scenario",
+    "b": "cell_panel_b_resistance",
+    "c": "cell_panel_c_rc_time",
+    "d": "cell_panel_d_joule_heating",
+    "e": "cell_panel_e_steady_temperature_rise",
+    "f": "cell_panel_f_transient_temperature_rise",
+    "g": "cell_panel_g_temperature_retention",
+    "h": "cell_panel_h_worst_temperature_risk",
+}
+
 COLORS = {
     "blue": "#2864A8",
     "orange": "#DB7C26",
@@ -88,8 +99,8 @@ def _panel_a(container: Any) -> None:
         "Current data\n+ split audit",
         "Supported ion\nrecombination",
         "Six-property\ninference",
-        "Proxy + curve\nquality audit",
-        "AD + hard\nconstraints",
+        "Proxy + ref-cell\nscenario",
+        "Curve + AD +\nhard constraints",
         "Pareto leads +\nsubstitutions",
     ]
     x = np.linspace(0.08, 0.92, len(labels))
@@ -451,3 +462,253 @@ def generate_figure5(paths: dict[str, Path], config: dict[str, Any]) -> dict[str
         )
         output_files.extend(_save(fig, paths["figures"] / "figure5_computational_application_case", formats, dpi))
     return {"figure_files": output_files, "panel_count": 8, "dpi": dpi, "formats": formats}
+
+
+def _reference_cell_candidates(
+    metrics: pd.DataFrame,
+    final: pd.DataFrame,
+) -> list[str]:
+    selected = (
+        final["candidate_id"].astype(str).head(3).tolist()
+        if not final.empty
+        else metrics.loc[
+            metrics["candidate_type"].eq("unseen_pair_recombination"),
+            "candidate_id",
+        ].astype(str).drop_duplicates().head(3).tolist()
+    )
+    references = metrics.loc[
+        metrics["candidate_type"].eq("observed_reference"), "candidate_id"
+    ].astype(str).drop_duplicates().head(1).tolist()
+    return list(dict.fromkeys(selected + references))
+
+
+def _cell_panel_a(container: Any, paths: dict[str, Path]) -> None:
+    ax = container.subplots()
+    _title(ax, "a", "Conditional reference-cell scenario")
+    ax.set_axis_off()
+    payload = _read_json(paths["audit"] / "reference_cell_scenario.json")
+    scenario = payload.get("scenario", {})
+    rows = [
+        ("Electrode area", f"{scenario.get('electrode_area_cm2', 'NA')} cm²"),
+        ("Separator thickness", f"{scenario.get('separator_thickness_um', 'NA')} μm"),
+        ("Electrolyte volume", f"{scenario.get('electrolyte_volume_mL', 'NA')} mL"),
+        ("Nominal capacitance", f"{scenario.get('nominal_capacitance_F', 'NA')} F"),
+        ("Applied current", f"{scenario.get('charge_discharge_current_A', 'NA')} A"),
+        ("Convective coefficient", f"{scenario.get('convective_heat_transfer_coefficient_W_m2_K', 'NA')} W m⁻² K⁻¹"),
+    ]
+    for index, (label, value) in enumerate(rows):
+        y = 0.88 - index * 0.105
+        ax.text(0.08, y, label, fontsize=8, color=COLORS["gray"], va="center")
+        ax.text(0.92, y, value, fontsize=8.5, fontweight="bold", ha="right", va="center")
+    ax.text(
+        0.5,
+        0.15,
+        "$R=L/(σA)$   $τ_{RC}=RC$   $P=I^2R$\n"
+        "$ΔT(t)=PR_{th}[1-\\exp(-t/(R_{th}C_{th}))]$",
+        ha="center",
+        va="center",
+        fontsize=9,
+        bbox={"boxstyle": "round,pad=0.5", "fc": COLORS["light"], "ec": "white"},
+    )
+    ax.text(
+        0.5,
+        0.03,
+        "Conditional comparison only; liquid phase, total cell ESR, and electrochemistry are not predicted.",
+        ha="center",
+        fontsize=6.8,
+        color=COLORS["red"],
+    )
+
+
+def _cell_curve_panel(
+    container: Any,
+    paths: dict[str, Path],
+    letter: str,
+    title: str,
+    metric: str,
+    ylabel: str,
+) -> None:
+    ax = container.subplots()
+    _title(ax, letter, title)
+    metrics = _read_csv(paths["data"] / "reference_cell_metrics_temperature.csv")
+    final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
+    if metrics.empty or metric not in metrics:
+        _empty(ax, "Reference-cell metrics unavailable")
+        return
+    if "analysis_window" in metrics:
+        metrics = metrics[metrics["analysis_window"].eq("main")]
+    selected = _reference_cell_candidates(metrics, final)
+    markers = ["o", "s", "^", "D"]
+    colors = [COLORS["blue"], COLORS["orange"], COLORS["green"], COLORS["gray"]]
+    for index, candidate_id in enumerate(selected):
+        group = metrics[metrics["candidate_id"].astype(str).eq(candidate_id)].sort_values(
+            "temperature_K"
+        )
+        if group.empty:
+            continue
+        label = candidate_id
+        if group["candidate_type"].eq("observed_reference").all():
+            label = f"{candidate_id} (reference)"
+        ax.plot(
+            group["temperature_K"] - 273.15,
+            group[metric],
+            label=label,
+            color=colors[index % len(colors)],
+            marker=markers[index % len(markers)],
+            markevery=max(1, len(group) // 6),
+            markersize=3.5,
+        )
+    ax.set_xlabel("Ambient temperature (°C)")
+    ax.set_ylabel(ylabel)
+    if not metrics.empty and metrics[metric].max() / max(metrics[metric].min(), 1.0e-30) > 100:
+        ax.set_yscale("log")
+    ax.legend(fontsize=6.3, frameon=False)
+    _style_axis(ax)
+
+
+def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
+    ax = container.subplots()
+    _title(ax, "g", "Low/high-temperature conductivity retention")
+    summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
+    final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
+    if summary.empty:
+        _empty(ax, "Reference-cell summary unavailable")
+        return
+    selected_ids = (
+        final["candidate_id"].astype(str).head(8).tolist()
+        if not final.empty
+        else summary.loc[
+            summary["candidate_type"].eq("unseen_pair_recombination"), "candidate_id"
+        ].astype(str).head(8).tolist()
+    )
+    display = summary[summary["candidate_id"].astype(str).isin(selected_ids)].copy()
+    display["_order"] = display["candidate_id"].astype(str).map(
+        {value: index for index, value in enumerate(selected_ids)}
+    )
+    display = display.sort_values("_order")
+    x = np.arange(len(display))
+    width = 0.36
+    ax.bar(
+        x - width / 2,
+        display["low_temperature_conductivity_retention_pct"],
+        width,
+        label="Low T / reference T",
+        color=COLORS["blue"],
+    )
+    ax.bar(
+        x + width / 2,
+        display["high_temperature_conductivity_retention_pct"],
+        width,
+        label="High T / reference T",
+        color=COLORS["orange"],
+    )
+    ax.axhline(100.0, color=COLORS["gray"], linewidth=1.0, linestyle="--")
+    ax.set_xticks(x)
+    ax.set_xticklabels(display["candidate_id"], rotation=35, ha="right", fontsize=6.5)
+    ax.set_ylabel("Conductivity retention (%)")
+    ax.legend(frameon=False, fontsize=6.5)
+    _style_axis(ax)
+
+
+def _cell_panel_h(container: Any, paths: dict[str, Path]) -> None:
+    ax = container.subplots()
+    _title(ax, "h", "Worst-temperature comparative operating risk")
+    summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
+    if summary.empty:
+        _empty(ax, "Reference-cell summary unavailable")
+        return
+    unseen = summary[summary["candidate_type"].eq("unseen_pair_recombination")]
+    palette = {
+        "within_reference_envelope": COLORS["green"],
+        "elevated_reference_tail": COLORS["orange"],
+        "beyond_reference_tail": COLORS["red"],
+    }
+    markers = {
+        "within_reference_envelope": "o",
+        "elevated_reference_tail": "^",
+        "beyond_reference_tail": "X",
+    }
+    for band in palette:
+        group = unseen[unseen["reference_cell_risk_band_worst"].eq(band)]
+        if group.empty:
+            continue
+        ax.scatter(
+            group["reference_cell_worst_temperature_K"] - 273.15,
+            group["reference_cell_risk_index_worst"],
+            label=band.replace("_", " "),
+            color=palette[band],
+            marker=markers[band],
+            s=26,
+            alpha=0.72,
+            edgecolors="white",
+            linewidths=0.4,
+        )
+    ax.axhline(1.0, color=COLORS["gray"], linestyle="--", linewidth=1.0)
+    ax.set_xlabel("Worst ambient temperature (°C)")
+    ax.set_ylabel("Worst q75-relative risk index")
+    ax.legend(frameon=False, fontsize=6.2)
+    _style_axis(ax)
+
+
+def _reference_cell_renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any], None]]:
+    return {
+        "a": lambda container: _cell_panel_a(container, paths),
+        "b": lambda container: _cell_curve_panel(
+            container, paths, "b", "Relative electrolyte-path resistance", "electrolyte_resistance_ohm", "Ideal electrolyte resistance (Ω)"
+        ),
+        "c": lambda container: _cell_curve_panel(
+            container, paths, "c", "Electrolyte RC contribution", "electrolyte_RC_time_constant_s", "Electrolyte-only RC time (s)"
+        ),
+        "d": lambda container: _cell_curve_panel(
+            container, paths, "d", "Constant-current Joule heating", "joule_heating_power_W", "Joule power (W)"
+        ),
+        "e": lambda container: _cell_curve_panel(
+            container, paths, "e", "Conditional steady temperature rise", "steady_state_temperature_rise_K", "Steady ΔT (K)"
+        ),
+        "f": lambda container: _cell_curve_panel(
+            container, paths, "f", "Conditional transient temperature rise", "transient_temperature_rise_K", "Transient ΔT (K)"
+        ),
+        "g": lambda container: _cell_panel_g(container, paths),
+        "h": lambda container: _cell_panel_h(container, paths),
+    }
+
+
+def generate_reference_cell_figure(
+    paths: dict[str, Path], config: dict[str, Any]
+) -> dict[str, Any]:
+    """Generate Figure 6 from persisted conditional reference-cell outputs."""
+
+    figure_config = config["figures"]
+    formats = [str(value).lower() for value in figure_config["formats"]]
+    dpi = int(figure_config["dpi"])
+    renderers = _reference_cell_renderers(paths)
+    output_files: list[str] = []
+    if bool(figure_config.get("make_individual_panels", True)):
+        for letter, renderer in renderers.items():
+            fig = plt.figure(figsize=(6.4, 4.1), constrained_layout=True)
+            renderer(fig)
+            output_files.extend(
+                _save(
+                    fig,
+                    paths["figures"] / REFERENCE_CELL_PANEL_FILES[letter],
+                    formats,
+                    dpi,
+                )
+            )
+    if bool(figure_config.get("make_combined_figure", True)):
+        fig = plt.figure(figsize=(14.0, 18.0), constrained_layout=True)
+        subfigures = np.asarray(fig.subfigures(4, 2)).ravel()
+        for subfigure, renderer in zip(subfigures, renderers.values()):
+            renderer(subfigure)
+        fig.suptitle(
+            "Figure 6 | Conditional reference-cell response across ambient temperature",
+            fontsize=14,
+            fontweight="bold",
+        )
+        output_files.extend(
+            _save(fig, paths["figures"] / "figure6_reference_cell_scenario", formats, dpi)
+        )
+    return {
+        "reference_cell_figure_files": output_files,
+        "reference_cell_panel_count": 8,
+    }

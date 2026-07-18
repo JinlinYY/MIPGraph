@@ -32,6 +32,7 @@ from .io_utils import (
 from .model_adapter import MIPGraphModelAdapter, PROPERTY_UNITS
 from .paths import resolve_project_path
 from .proxies import compute_application_proxies, summarize_whole_temperature_window
+from .reference_cell import simulate_reference_cell_scenario
 from .screening import (
     audit_curve_quality,
     curve_counts,
@@ -54,6 +55,7 @@ STEP_ORDER = [
     "candidate_generation",
     "inference",
     "proxies",
+    "reference_cell",
     "curve_quality",
     "applicability_domain",
     "uncertainty",
@@ -99,6 +101,7 @@ class CasePipeline:
             "candidate_generation": self.candidate_generation,
             "inference": self.inference,
             "proxies": self.proxies,
+            "reference_cell": self.reference_cell,
             "curve_quality": self.curve_quality,
             "applicability_domain": self.applicability_domain,
             "uncertainty": self.uncertainty,
@@ -196,6 +199,16 @@ class CasePipeline:
                 >= int(self.config["uncertainty"]["ensemble_min_checkpoints"])
                 else []
             ),
+            "reference_cell": [
+                data / "reference_cell_metrics_temperature.csv",
+                data / "reference_cell_candidate_summary.csv",
+                audit / "reference_cell_scenario.json",
+            ] + (
+                [data / "reference_cell_metrics_by_checkpoint.csv"]
+                if len(self.config["model"].get("checkpoint_paths", []))
+                >= int(self.config["uncertainty"]["ensemble_min_checkpoints"])
+                else []
+            ),
             "curve_quality": [
                 data / "curve_quality_flags.csv",
                 data / "candidate_robust_summary.csv",
@@ -223,6 +236,10 @@ class CasePipeline:
                 self.paths["tables"] / "reference_electrolyte_summary.csv",
                 self.paths["tables"] / "screening_thresholds.csv",
                 self.paths["tables"] / "screening_thresholds.tex",
+                self.paths["tables"] / "reference_cell_scenario_parameters.csv",
+                self.paths["tables"] / "reference_cell_scenario_parameters.tex",
+                self.paths["tables"] / "reference_cell_candidate_summary.csv",
+                self.paths["tables"] / "reference_cell_candidate_summary.tex",
             ],
             "report": [
                 self.paths["report"] / "computational_application_case_results.md",
@@ -231,7 +248,10 @@ class CasePipeline:
             ],
         }
         if step == "figures":
-            names = ["figure5_computational_application_case"]
+            names = [
+                "figure5_computational_application_case",
+                "figure6_reference_cell_scenario",
+            ]
             if bool(self.config["figures"].get("make_individual_panels", True)):
                 names.extend(
                     [
@@ -243,6 +263,14 @@ class CasePipeline:
                         "panel_f_constraints",
                         "panel_g_pareto",
                         "panel_h_candidates",
+                        "cell_panel_a_scenario",
+                        "cell_panel_b_resistance",
+                        "cell_panel_c_rc_time",
+                        "cell_panel_d_joule_heating",
+                        "cell_panel_e_steady_temperature_rise",
+                        "cell_panel_f_transient_temperature_rise",
+                        "cell_panel_g_temperature_retention",
+                        "cell_panel_h_worst_temperature_risk",
                     ]
                 )
             return [
@@ -700,6 +728,55 @@ class CasePipeline:
             "proxy_warning_rows": int(proxies["proxy_warnings"].fillna("").ne("").sum()),
         }
 
+    def reference_cell(self) -> dict[str, Any]:
+        """Evaluate the explicit conditional reference-cell scenario."""
+
+        proxy_path = self._data_path("application_proxies_temperature.csv")
+        if not proxy_path.exists():
+            raise FileNotFoundError(
+                "Application proxies are required before reference-cell simulation"
+            )
+        proxies = pd.read_csv(proxy_path)
+        metrics, summary, metadata = simulate_reference_cell_scenario(
+            proxies, self.config["reference_cell"]
+        )
+        write_csv(metrics, self._data_path("reference_cell_metrics_temperature.csv"))
+        write_csv(summary, self._data_path("reference_cell_candidate_summary.csv"))
+        ensemble_rows = 0
+        member_proxy_path = self._data_path("application_proxies_by_checkpoint.csv")
+        if member_proxy_path.exists():
+            member_proxies = pd.read_csv(member_proxy_path)
+            member_frames: list[pd.DataFrame] = []
+            for checkpoint_name, group in member_proxies.groupby(
+                "checkpoint_name", sort=True
+            ):
+                member_metrics, _, _ = simulate_reference_cell_scenario(
+                    group.copy(), self.config["reference_cell"]
+                )
+                member_metrics["checkpoint_name"] = checkpoint_name
+                member_frames.append(member_metrics)
+            member_metrics = pd.concat(member_frames, ignore_index=True)
+            write_csv(
+                member_metrics,
+                self._data_path("reference_cell_metrics_by_checkpoint.csv"),
+            )
+            ensemble_rows = len(member_metrics)
+        metadata.update(
+            {
+                "candidate_condition_rows": int(len(metrics)),
+                "candidate_summary_rows": int(len(summary)),
+                "ensemble_member_rows": int(ensemble_rows),
+                "risk_band_counts": {
+                    str(key): int(value)
+                    for key, value in summary[
+                        "reference_cell_risk_band_worst"
+                    ].value_counts().items()
+                },
+            }
+        )
+        write_json(metadata, self.paths["audit"] / "reference_cell_scenario.json")
+        return metadata
+
     def curve_quality(self) -> dict[str, Any]:
         """Audit curves and build complete whole-window robust summaries."""
 
@@ -725,6 +802,17 @@ class CasePipeline:
         flags = pd.concat([main_flags, sensitivity_flags], ignore_index=True)
         counts = curve_counts(main_flags)
         summary = summarize_whole_temperature_window(main_proxies)
+        scenario_summary_path = self._data_path("reference_cell_candidate_summary.csv")
+        if not scenario_summary_path.exists():
+            raise FileNotFoundError(
+                "Reference-cell scenario output is required before curve-quality audit"
+            )
+        scenario_summary = pd.read_csv(scenario_summary_path).drop(
+            columns=["candidate_type"], errors="ignore"
+        )
+        summary = summary.merge(
+            scenario_summary, on="candidate_id", how="left", validate="one_to_one"
+        )
         summary = summary.merge(counts, on="candidate_id", how="left", suffixes=("", "_audit"))
         for column in ["curve_warning_count", "severe_curve_failure_count"]:
             audit_column = f"{column}_audit"
@@ -905,6 +993,30 @@ class CasePipeline:
             if ensemble_enabled
             else proxies
         )
+        if ensemble_enabled:
+            member_cell = pd.read_csv(
+                self._data_path("reference_cell_metrics_by_checkpoint.csv")
+            )
+            keys = [
+                "candidate_id",
+                "temperature_K",
+                "pressure_kPa",
+                "checkpoint_name",
+            ]
+            scenario_columns = [
+                "electrolyte_resistance_ohm",
+                "electrolyte_RC_time_constant_s",
+                "joule_heating_power_W",
+                "steady_state_temperature_rise_K",
+                "transient_temperature_rise_K",
+                "reference_cell_risk_index",
+            ]
+            uncertainty_proxies = uncertainty_proxies.merge(
+                member_cell[keys + scenario_columns],
+                on=keys,
+                how="left",
+                validate="one_to_one",
+            )
         property_table, proxy_table, feasibility, status = estimate_uncertainty(
             uncertainty_predictions,
             uncertainty_proxies,
@@ -927,6 +1039,7 @@ class CasePipeline:
                 self.config["curve_quality"],
                 self.config["screening"],
                 self.config["pareto"],
+                self.config["reference_cell"],
             )
             status["decision_probability_status"] = (
                 "full_window_constraints_and_pareto_propagated"
@@ -1005,11 +1118,13 @@ class CasePipeline:
         return {"comparisons": int(len(comparisons)), "summary_rows": int(len(summary))}
 
     def figures(self) -> dict[str, Any]:
-        """Generate the data-driven eight-panel Figure 5 and panel files."""
+        """Generate thermophysical-screening and reference-cell figures."""
 
-        from .plotting import generate_figure5
+        from .plotting import generate_figure5, generate_reference_cell_figure
 
-        return generate_figure5(self.paths, self.config)
+        figure5 = generate_figure5(self.paths, self.config)
+        figure6 = generate_reference_cell_figure(self.paths, self.config)
+        return {**figure5, **figure6}
 
     def tables(self) -> dict[str, Any]:
         """Generate paper-ready CSV and LaTeX result tables."""

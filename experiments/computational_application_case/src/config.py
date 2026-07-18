@@ -95,6 +95,7 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
         "candidate_generation",
         "conditions",
         "proxies",
+        "reference_cell",
         "applicability_domain",
         "uncertainty",
         "screening",
@@ -108,6 +109,25 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
     temperature_grid(config["conditions"])
     if float(config["conditions"]["pressure_kPa"]) <= 0.0:
         raise ValueError("Pressure must be positive")
+    for key in [
+        "electrode_area_cm2",
+        "separator_thickness_um",
+        "electrolyte_volume_mL",
+        "nominal_capacitance_F",
+        "charge_discharge_current_A",
+        "convective_heat_transfer_coefficient_W_m2_K",
+        "exposed_face_count",
+        "transient_duration_s",
+        "reference_temperature_K",
+    ]:
+        value = float(config["reference_cell"].get(key, float("nan")))
+        if not np.isfinite(value) or value <= 0.0:
+            raise ValueError(f"reference_cell.{key} must be finite and positive")
+    reference_temperature = float(config["reference_cell"]["reference_temperature_K"])
+    if not np.isclose(temperature_grid(config["conditions"]), reference_temperature).any():
+        raise ValueError(
+            "reference_cell.reference_temperature_K must occur on the main temperature grid"
+        )
     for key in ["batch_size"]:
         if int(config["model"][key]) <= 0:
             raise ValueError(f"model.{key} must be positive")

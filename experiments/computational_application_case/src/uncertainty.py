@@ -20,6 +20,12 @@ PROXY_UNCERTAINTY_COLUMNS = [
     "transport_favorability",
     "interfacial_window_deviation",
     "thermal_effusivity",
+    "electrolyte_resistance_ohm",
+    "electrolyte_RC_time_constant_s",
+    "joule_heating_power_W",
+    "steady_state_temperature_rise_K",
+    "transient_temperature_rise_K",
+    "reference_cell_risk_index",
 ]
 
 ENSEMBLE_COMPATIBILITY_FIELDS = (
@@ -146,10 +152,12 @@ def estimate_ensemble_decision_probabilities(
     curve_config: Mapping[str, Any],
     screening_config: Mapping[str, Any],
     pareto_config: Mapping[str, Any],
+    reference_cell_config: Mapping[str, Any],
 ) -> pd.DataFrame:
     """Propagate ensemble members through full-window constraints and Pareto rank."""
 
     from .proxies import summarize_whole_temperature_window
+    from .reference_cell import simulate_reference_cell_scenario
     from .screening import (
         audit_curve_quality,
         curve_counts,
@@ -165,6 +173,15 @@ def estimate_ensemble_decision_probabilities(
         counts = curve_counts(flags)
         robust = summarize_whole_temperature_window(member).merge(
             counts, on="candidate_id", how="left", suffixes=("", "_audit")
+        )
+        _, scenario_summary, _ = simulate_reference_cell_scenario(
+            member, reference_cell_config
+        )
+        robust = robust.merge(
+            scenario_summary.drop(columns=["candidate_type"], errors="ignore"),
+            on="candidate_id",
+            how="left",
+            validate="one_to_one",
         )
         for column in ["curve_warning_count", "severe_curve_failure_count"]:
             audit_column = f"{column}_audit"

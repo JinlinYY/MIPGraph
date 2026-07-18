@@ -38,6 +38,10 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     library = pd.read_csv(data / "candidate_library.csv")
     predictions = pd.read_csv(data / "property_predictions_long.csv")
     proxies = pd.read_csv(data / "application_proxies_temperature.csv")
+    cell_metrics = pd.read_csv(
+        data / "reference_cell_metrics_temperature.csv", low_memory=False
+    )
+    cell_summary = pd.read_csv(data / "reference_cell_candidate_summary.csv")
     robust = pd.read_csv(data / "candidate_robust_summary.csv")
     ad = pd.read_csv(data / "applicability_domain.csv")
     trace = pd.read_csv(data / "screening_trace.csv")
@@ -107,6 +111,87 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
         "simplified thermal diffusion timescale",
     )
     checks["proxy_unit_formulas_exact"] = True
+    scenario = config["reference_cell"]
+    area_m2 = float(scenario["electrode_area_cm2"]) * 1.0e-4
+    thickness_m = float(scenario["separator_thickness_um"]) * 1.0e-6
+    volume_m3 = float(scenario["electrolyte_volume_mL"]) * 1.0e-6
+    heat_transfer_area_m2 = float(scenario["exposed_face_count"]) * area_m2
+    resistance = thickness_m / (
+        cell_metrics["ElectricalConductivity"] * area_m2
+    )
+    _assert_close(
+        cell_metrics["electrolyte_resistance_ohm"],
+        resistance,
+        "reference-cell electrolyte resistance",
+    )
+    _assert_close(
+        cell_metrics["electrolyte_RC_time_constant_s"],
+        resistance * float(scenario["nominal_capacitance_F"]),
+        "reference-cell RC contribution",
+    )
+    power = float(scenario["charge_discharge_current_A"]) ** 2 * resistance
+    _assert_close(
+        cell_metrics["joule_heating_power_W"],
+        power,
+        "reference-cell Joule power",
+    )
+    thermal_resistance = thickness_m / (
+        cell_metrics["ThermalConductivity"] * area_m2
+    ) + 1.0 / (
+        float(scenario["convective_heat_transfer_coefficient_W_m2_K"])
+        * heat_transfer_area_m2
+    )
+    _assert_close(
+        cell_metrics["thermal_resistance_K_per_W"],
+        thermal_resistance,
+        "reference-cell thermal resistance",
+    )
+    thermal_capacitance = cell_metrics["volumetric_heat_capacity"] * volume_m3
+    _assert_close(
+        cell_metrics["electrolyte_thermal_capacitance_J_per_K"],
+        thermal_capacitance,
+        "reference-cell thermal capacitance",
+    )
+    thermal_time = thermal_resistance * thermal_capacitance
+    steady_rise = power * thermal_resistance
+    transient_rise = steady_rise * (
+        1.0
+        - np.exp(-float(scenario["transient_duration_s"]) / thermal_time)
+    )
+    _assert_close(
+        cell_metrics["steady_state_temperature_rise_K"],
+        steady_rise,
+        "reference-cell steady temperature rise",
+    )
+    _assert_close(
+        cell_metrics["transient_temperature_rise_K"],
+        transient_rise,
+        "reference-cell transient temperature rise",
+    )
+    _assert_close(
+        cell_metrics["relative_electrolyte_resistance"],
+        resistance / cell_metrics["reference_temperature_resistance_ohm"],
+        "relative electrolyte resistance",
+    )
+    checks["conditional_reference_cell_equations_exact"] = True
+    checks["reference_cell_summary_complete"] = bool(
+        cell_summary["candidate_id"].nunique() == library["candidate_id"].nunique()
+        and set(cell_summary["reference_cell_risk_band_worst"]).issubset(
+            {
+                "within_reference_envelope",
+                "elevated_reference_tail",
+                "beyond_reference_tail",
+            }
+        )
+        and np.isfinite(
+            cell_summary[
+                [
+                    "reference_cell_risk_index_worst",
+                    "reference_cell_worst_temperature_K",
+                ]
+            ].to_numpy(float)
+        ).all()
+    )
     reference = robust[robust["candidate_type"].eq("observed_reference")]
     threshold_definitions = {
         "conductivity_min": ("conductivity_worst", "conductivity_reference_quantile"),
@@ -178,8 +263,14 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     required_files = [
         output_dir / "figures" / "figure5_computational_application_case.png",
         output_dir / "figures" / "figure5_computational_application_case.pdf",
+        output_dir / "figures" / "figure6_reference_cell_scenario.png",
+        output_dir / "figures" / "figure6_reference_cell_scenario.pdf",
         output_dir / "tables" / "final_candidate_table.csv",
         output_dir / "tables" / "final_candidate_table.tex",
+        output_dir / "tables" / "reference_cell_scenario_parameters.csv",
+        output_dir / "tables" / "reference_cell_scenario_parameters.tex",
+        output_dir / "tables" / "reference_cell_candidate_summary.csv",
+        output_dir / "tables" / "reference_cell_candidate_summary.tex",
         output_dir / "report" / "computational_application_case_results.tex",
         output_dir / "report" / "computational_application_case_summary.json",
     ]
