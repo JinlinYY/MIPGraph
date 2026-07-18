@@ -9,7 +9,9 @@ stored condition and target scalers.
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
+import json
 import sys
 import traceback
 from dataclasses import dataclass
@@ -22,18 +24,8 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 
-from .config import EXPECTED_PROPERTIES
 from .paths import resolve_project_path
-
-
-PROPERTY_UNITS = {
-    "Density": "kg m^-3",
-    "ElectricalConductivity": "S m^-1",
-    "HeatCapacity": "J mol^-1 K^-1",
-    "SurfaceTension": "N m^-1",
-    "ThermalConductivity": "W m^-1 K^-1",
-    "Viscosity": "Pa s",
-}
+from .schema import PROPERTY_NAMES, PROPERTY_UNITS
 
 
 @dataclass
@@ -109,9 +101,9 @@ class MIPGraphModelAdapter:
             raise ValueError(f"Checkpoint lacks required keys: {missing}")
         self.checkpoint = checkpoint
         self.property_names = list(checkpoint["property_names"])
-        if self.property_names != EXPECTED_PROPERTIES:
+        if self.property_names != list(PROPERTY_NAMES):
             raise ValueError(
-                f"Unexpected property order: {self.property_names}; expected {EXPECTED_PROPERTIES}"
+                f"Unexpected property order: {self.property_names}; expected {list(PROPERTY_NAMES)}"
             )
         external_config = _load_yaml(
             resolve_project_path(self.root, case_config["model"]["config_path"])
@@ -183,6 +175,28 @@ class MIPGraphModelAdapter:
         self._build_graph = importlib.import_module(
             "src.chem.graph_featurizer"
         ).build_ion_pair_graph
+        graph_identity = {
+            "chem": self.model_config.get("chem", {}),
+            "use_cross_ion_edges": self.model_config["model"].get(
+                "use_cross_ion_edges", True
+            ),
+        }
+        self.graph_config_fingerprint = hashlib.sha256(
+            json.dumps(graph_identity, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()[:16]
+        runtime_model_keys = {"unimol2_feature_cache_path", "unimol2_weight_dir"}
+        model_structure_identity = {
+            key: value
+            for key, value in self.model_config["model"].items()
+            if key not in runtime_model_keys
+        }
+        self.model_structure_fingerprint = hashlib.sha256(
+            json.dumps(
+                model_structure_identity,
+                sort_keys=True,
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()[:16]
 
     def _canonical_feature_key_map(self) -> dict[str, str]:
         canonicalize = importlib.import_module("src.chem.smiles_utils").canonicalize_smiles
@@ -301,6 +315,7 @@ class MIPGraphModelAdapter:
             "cation_smiles",
             "anion_smiles",
             "il_smiles",
+            "canonical_il_key",
         }
         missing = sorted(required - set(candidates.columns))
         if missing:
@@ -315,11 +330,14 @@ class MIPGraphModelAdapter:
         graph_by_id: dict[str, Data] = {}
         for _, row in candidates.iterrows():
             candidate_id = str(row["candidate_id"])
+            graph_cache_key = (
+                f"{row['canonical_il_key']}::{self.graph_config_fingerprint}"
+            )
             try:
-                graph = graph_cache.get(candidate_id)
+                graph = graph_cache.get(graph_cache_key)
                 if graph is None:
                     graph = self._graph_for_candidate(row)
-                    graph_cache[candidate_id] = graph.cpu()
+                    graph_cache[graph_cache_key] = graph.cpu()
                 graph_by_id[candidate_id] = graph
             except (KeyError, RuntimeError, TypeError, ValueError) as exc:
                 failures.append(self._failure(row, "graph_or_unimol_cache", exc))
@@ -499,9 +517,17 @@ class MIPGraphModelAdapter:
                 else "not_applicable"
             ),
             "property_order": self.property_names,
-            "property_units": PROPERTY_UNITS,
+            "property_units": dict(PROPERTY_UNITS),
             "target_inverse_transform": "exp(y_scaled * target_std + target_mean) - 1e-8",
             "target_epsilon": float(self.target_scaler.eps),
+            "condition_scaler_class": (
+                f"{type(self.condition_scaler).__module__}."
+                f"{type(self.condition_scaler).__name__}"
+            ),
+            "target_scaler_class": (
+                f"{type(self.target_scaler).__module__}."
+                f"{type(self.target_scaler).__name__}"
+            ),
             "condition_scaler": dict(vars(self.condition_scaler)),
             "target_means": self.target_scaler.means.tolist(),
             "target_stds": self.target_scaler.stds.tolist(),
@@ -511,6 +537,8 @@ class MIPGraphModelAdapter:
             "device": str(self.device),
             "unimol2_feature_cache": self.model.ion_encoder.feature_cache_path,
             "application_graph_cache": str(cache_path),
+            "graph_config_fingerprint": self.graph_config_fingerprint,
+            "model_structure_fingerprint": self.model_structure_fingerprint,
             "embedding_available": bool(embeddings),
             "deprecated_archive_used": False,
         }

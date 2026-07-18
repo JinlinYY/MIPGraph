@@ -273,10 +273,16 @@ def summarize_whole_temperature_window(proxy_table: pd.DataFrame) -> pd.DataFram
     if missing:
         raise ValueError(f"Proxy table lacks required columns: {missing}")
     rows: list[dict[str, Any]] = []
+    expected_temperature_count = int(proxy_table["temperature_K"].nunique())
     for candidate_id, group in proxy_table.groupby("candidate_id", sort=True):
         group = group.sort_values("temperature_K").reset_index(drop=True)
         first = group.iloc[0]
         row: dict[str, Any] = {"candidate_id": candidate_id}
+        row["temperature_point_count"] = int(group["temperature_K"].nunique())
+        row["expected_temperature_point_count"] = expected_temperature_count
+        row["temperature_grid_complete"] = bool(
+            row["temperature_point_count"] == expected_temperature_count
+        )
         for metadata in [
             "candidate_type",
             "cation_smiles",

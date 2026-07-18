@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 from dataclasses import asdict
 from pathlib import Path
@@ -16,6 +17,7 @@ from .applicability_domain import assess_applicability_domain
 from .chemistry import (
     CandidateGenerationSettings,
     build_candidate_tables,
+    ion_family,
     parse_monovalent_pair,
 )
 from .config import temperature_grid
@@ -37,7 +39,11 @@ from .screening import (
     prioritize_candidates,
     screen_candidates,
 )
-from .uncertainty import estimate_uncertainty
+from .uncertainty import (
+    estimate_ensemble_decision_probabilities,
+    estimate_uncertainty,
+    validate_ensemble_compatibility,
+)
 
 
 LOGGER = logging.getLogger("computational_application_case")
@@ -86,6 +92,7 @@ class CasePipeline:
         self.skip_figures = bool(skip_figures)
         self.skip_report = bool(skip_report)
         self._adapter: MIPGraphModelAdapter | None = None
+        self.run_fingerprint = self._compute_run_fingerprint()
         self.step_functions: dict[str, Callable[[], dict[str, Any]]] = {
             "repository_audit": self.repository_audit,
             "unit_audit": self.unit_audit,
@@ -106,6 +113,145 @@ class CasePipeline:
     def marker(self, step: str) -> Path:
         return self.paths["steps"] / f"{step}.json"
 
+    def _compute_run_fingerprint(self) -> str:
+        """Fingerprint configuration, checkpoint identities, and case source code."""
+
+        digest = hashlib.sha256(
+            json.dumps(self.config, sort_keys=True, default=str).encode("utf-8")
+        )
+        checkpoint_values = list(self.config["model"].get("checkpoint_paths", [])) or [
+            self.config["model"]["checkpoint_path"]
+        ]
+        input_values = checkpoint_values + [
+            self.config["model"]["config_path"],
+            self.config["model"]["graph_cache_path"],
+            self.config["model"]["unimol2_feature_cache_path"],
+            self.config["data"]["benchmark_path"],
+            self.config["data"]["arrays_path"],
+            self.config["data"]["split_path"],
+        ]
+        for value in input_values:
+            path = resolve_project_path(self.root, value)
+            digest.update(str(path).encode("utf-8"))
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+                    digest.update(chunk)
+        case_root = self.root / "experiments" / "computational_application_case"
+        source_paths = sorted((case_root / "src").glob("*.py")) + [case_root / "run_all.py"]
+        for path in source_paths:
+            digest.update(path.relative_to(case_root).as_posix().encode("utf-8"))
+            digest.update(path.read_bytes())
+        return digest.hexdigest()
+
+    def _invalidate_downstream_markers(self, completed_step: str) -> None:
+        """Invalidate later markers after an explicitly forced upstream rerun."""
+
+        start = STEP_ORDER.index(completed_step) + 1
+        for downstream in STEP_ORDER[start:]:
+            marker = self.marker(downstream)
+            if marker.exists():
+                marker.unlink()
+                LOGGER.info(
+                    "[%s] invalidated downstream marker after forced %s rerun",
+                    downstream,
+                    completed_step,
+                )
+
+    def _required_artifacts(self, step: str) -> list[Path]:
+        """Return output files whose presence makes a step resumable."""
+
+        data = self.paths["data"]
+        audit = self.paths["audit"]
+        mapping = {
+            "repository_audit": [audit / "repository_audit.json", audit / "repository_audit.md"],
+            "unit_audit": [audit / "unit_audit.json", audit / "unit_audit.md"],
+            "candidate_generation": [
+                data / "cation_library.csv",
+                data / "anion_library.csv",
+                data / "observed_reference_library.csv",
+                data / "candidate_library.csv",
+                data / "candidate_generation_trace.csv",
+                data / "candidate_generation_failures.csv",
+            ],
+            "inference": [
+                data / "property_predictions_long.csv",
+                data / "property_predictions_wide.csv",
+                data / "model_features.csv",
+                data / "inference_failures.csv",
+                audit / "inference_pipeline.json",
+                audit / "inference_pipeline.md",
+                self.paths["cache"] / "candidate_graphs.pt",
+            ] + (
+                [data / "property_predictions_by_checkpoint.csv"]
+                if len(self.config["model"].get("checkpoint_paths", []))
+                >= int(self.config["uncertainty"]["ensemble_min_checkpoints"])
+                else []
+            ),
+            "proxies": [
+                data / "application_proxies_temperature.csv",
+                data / "application_proxies_wide.csv",
+            ] + (
+                [data / "application_proxies_by_checkpoint.csv"]
+                if len(self.config["model"].get("checkpoint_paths", []))
+                >= int(self.config["uncertainty"]["ensemble_min_checkpoints"])
+                else []
+            ),
+            "curve_quality": [
+                data / "curve_quality_flags.csv",
+                data / "candidate_robust_summary.csv",
+            ],
+            "applicability_domain": [
+                data / "applicability_domain.csv",
+                audit / "applicability_domain.json",
+            ],
+            "uncertainty": [
+                data / "property_uncertainty.csv",
+                data / "proxy_uncertainty.csv",
+                data / "feasibility_probability.csv",
+                audit / "uncertainty.json",
+            ],
+            "screening": [data / "reference_thresholds.json", data / "screening_trace.csv"],
+            "pareto": [data / "pareto_candidates.csv", data / "final_prioritized_candidates.csv"],
+            "counterfactuals": [
+                data / "counterfactual_ion_substitutions.csv",
+                data / "counterfactual_summary.csv",
+            ],
+            "tables": [
+                self.paths["tables"] / "candidate_generation_summary.csv",
+                self.paths["tables"] / "final_candidate_table.csv",
+                self.paths["tables"] / "final_candidate_table.tex",
+                self.paths["tables"] / "reference_electrolyte_summary.csv",
+                self.paths["tables"] / "screening_thresholds.csv",
+                self.paths["tables"] / "screening_thresholds.tex",
+            ],
+            "report": [
+                self.paths["report"] / "computational_application_case_results.md",
+                self.paths["report"] / "computational_application_case_results.tex",
+                self.paths["report"] / "computational_application_case_summary.json",
+            ],
+        }
+        if step == "figures":
+            names = ["figure5_computational_application_case"]
+            if bool(self.config["figures"].get("make_individual_panels", True)):
+                names.extend(
+                    [
+                        "panel_a_workflow",
+                        "panel_b_funnel",
+                        "panel_c_properties",
+                        "panel_d_proxies",
+                        "panel_e_applicability_domain",
+                        "panel_f_constraints",
+                        "panel_g_pareto",
+                        "panel_h_candidates",
+                    ]
+                )
+            return [
+                self.paths["figures"] / f"{name}.{extension}"
+                for name in names
+                for extension in self.config["figures"]["formats"]
+            ]
+        return mapping.get(step, [])
+
     def run(self, only_step: str | None = None) -> dict[str, Any]:
         """Run all steps or one explicitly selected step."""
 
@@ -123,15 +269,34 @@ class CasePipeline:
             marker = self.marker(step)
             if marker.exists() and not self.force:
                 if self.resume:
+                    marker_payload = json.loads(marker.read_text(encoding="utf-8"))
+                    if marker_payload.get("run_fingerprint") != self.run_fingerprint:
+                        raise RuntimeError(
+                            f"Cannot resume {step}: configuration, checkpoint, or case code changed. Use --force."
+                        )
+                    missing_artifacts = [
+                        path for path in self._required_artifacts(step) if not path.exists()
+                    ]
+                    if missing_artifacts:
+                        raise FileNotFoundError(
+                            f"Cannot resume {step}; marker exists but artifacts are missing: {missing_artifacts}"
+                        )
                     LOGGER.info("[%s] already completed; resume skips it", step)
-                    results[step] = json.loads(marker.read_text(encoding="utf-8"))
+                    results[step] = marker_payload
                     continue
                 raise FileExistsError(
                     f"Step {step} already completed at {marker}. Use --resume or --force."
                 )
             LOGGER.info("[%s] starting", step)
             payload = self.step_functions[step]()
-            write_step_marker(self.paths["steps"], step, payload)
+            marker_payload = {
+                **payload,
+                "run_fingerprint": self.run_fingerprint,
+                "artifacts": [str(path) for path in self._required_artifacts(step)],
+            }
+            write_step_marker(self.paths["steps"], step, marker_payload)
+            if self.force:
+                self._invalidate_downstream_markers(step)
             results[step] = payload
             LOGGER.info("[%s] completed", step)
         return results
@@ -186,7 +351,7 @@ class CasePipeline:
         benchmark = self._benchmark()
         audit: dict[str, Any] = {
             "property_order": list(PROPERTY_UNITS),
-            "units": PROPERTY_UNITS,
+            "units": dict(PROPERTY_UNITS),
             "heat_capacity_basis": "molar",
             "unit_source": "current dataset-statistics exporter and source magnitudes",
             "properties": {},
@@ -296,7 +461,8 @@ class CasePipeline:
             ["candidate_id", "candidate_type", "cation_smiles", "anion_smiles", "il_smiles"],
             "candidate library",
         )
-        temperatures = temperature_grid(self.config["conditions"])
+        main_temperatures = temperature_grid(self.config["conditions"])
+        temperatures = main_temperatures
         if bool(self.config["conditions"].get("run_extended_sensitivity", False)):
             temperatures = np.unique(
                 np.concatenate([temperatures, temperature_grid(self.config["conditions"], extended=True)])
@@ -307,14 +473,137 @@ class CasePipeline:
             float(pd.to_numeric(training["Temperature_K"], errors="coerce").min()),
             float(pd.to_numeric(training["Temperature_K"], errors="coerce").max()),
         )
-        result = self._get_adapter().predict(
-            library,
-            temperatures,
-            float(self.config["conditions"]["pressure_kPa"]),
-            self.paths["cache"] / "candidate_graphs.pt",
-            training_range,
-            force=self.force,
-        )
+        ensemble_paths = list(self.config["model"].get("checkpoint_paths", []))
+        minimum_members = int(self.config["uncertainty"]["ensemble_min_checkpoints"])
+        ensemble_enabled = len(ensemble_paths) >= minimum_members
+        if ensemble_enabled:
+            member_results = []
+            for member_index, checkpoint_path in enumerate(ensemble_paths, start=1):
+                adapter = MIPGraphModelAdapter(self.config, checkpoint_path=checkpoint_path)
+                member = adapter.predict(
+                    library,
+                    temperatures,
+                    float(self.config["conditions"]["pressure_kPa"]),
+                    self.paths["cache"] / "candidate_graphs.pt",
+                    training_range,
+                    force=self.force and member_index == 1,
+                )
+                member_name = f"member_{member_index:02d}_{Path(checkpoint_path).name}"
+                member.predictions["checkpoint_name"] = member_name
+                member.predictions["analysis_window"] = np.where(
+                    member.predictions["temperature_K"].isin(main_temperatures),
+                    "main",
+                    "extended_sensitivity",
+                )
+                member.failures["checkpoint_name"] = member_name
+                member_results.append(member)
+                del adapter
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            validate_ensemble_compatibility(
+                [member.metadata for member in member_results]
+            )
+            by_checkpoint = pd.concat(
+                [member.predictions for member in member_results], ignore_index=True
+            )
+            key_columns = ["candidate_id", "temperature_K", "pressure_kPa"]
+            member_counts = by_checkpoint.groupby(key_columns)["checkpoint_name"].nunique()
+            complete_keys = member_counts[member_counts.eq(len(ensemble_paths))].reset_index()[
+                key_columns
+            ]
+            if complete_keys.empty:
+                raise RuntimeError(
+                    "No candidate-condition row has complete coverage across all ensemble checkpoints"
+                )
+            complete_members = by_checkpoint.merge(
+                complete_keys, on=key_columns, how="inner", validate="many_to_one"
+            )
+            base_columns = [
+                column
+                for column in complete_members.columns
+                if column not in list(PROPERTY_UNITS) + ["checkpoint_name"]
+            ]
+            base = complete_members.sort_values("checkpoint_name").drop_duplicates(
+                key_columns
+            )[base_columns]
+            means = complete_members.groupby(key_columns, as_index=False)[
+                list(PROPERTY_UNITS)
+            ].mean()
+            point_predictions = base.merge(
+                means, on=key_columns, how="inner", validate="one_to_one"
+            )
+            point_predictions["checkpoint_name"] = f"ensemble_mean_{len(ensemble_paths)}"
+            result = member_results[0]
+            result.predictions = point_predictions.sort_values(
+                ["candidate_id", "temperature_K"]
+            ).reset_index(drop=True)
+            result.predictions_wide = result.predictions.pivot(
+                index=[
+                    "candidate_id",
+                    "candidate_type",
+                    "cation_smiles",
+                    "anion_smiles",
+                    "il_smiles",
+                ],
+                columns="temperature_K",
+                values=list(PROPERTY_UNITS),
+            )
+            result.predictions_wide.columns = [
+                f"{name}_{temperature:g}K"
+                for name, temperature in result.predictions_wide.columns
+            ]
+            result.predictions_wide = result.predictions_wide.reset_index()
+            result.failures = pd.concat(
+                [member.failures for member in member_results], ignore_index=True
+            )
+            result.metadata.update(
+                {
+                    "ensemble_enabled": True,
+                    "checkpoint_paths": [
+                        str(resolve_project_path(self.root, value))
+                        for value in ensemble_paths
+                    ],
+                    "checkpoint_count": len(ensemble_paths),
+                    "point_prediction": "arithmetic ensemble mean in physical units",
+                    "ensemble_member_scalers": [
+                        {
+                            "checkpoint_path": member.metadata["checkpoint_path"],
+                            "condition_scaler": member.metadata["condition_scaler"],
+                            "target_means": member.metadata["target_means"],
+                            "target_stds": member.metadata["target_stds"],
+                        }
+                        for member in member_results
+                    ],
+                }
+            )
+            write_csv(
+                by_checkpoint,
+                self._data_path("property_predictions_by_checkpoint.csv"),
+            )
+        else:
+            result = self._get_adapter().predict(
+                library,
+                temperatures,
+                float(self.config["conditions"]["pressure_kPa"]),
+                self.paths["cache"] / "candidate_graphs.pt",
+                training_range,
+                force=self.force,
+            )
+            result.predictions["analysis_window"] = np.where(
+                result.predictions["temperature_K"].isin(main_temperatures),
+                "main",
+                "extended_sensitivity",
+            )
+            result.metadata.update(
+                {
+                    "ensemble_enabled": False,
+                    "checkpoint_paths": [str(result.checkpoint_path)]
+                    if hasattr(result, "checkpoint_path")
+                    else [result.metadata["checkpoint_path"]],
+                    "checkpoint_count": 1,
+                    "point_prediction": "single checkpoint",
+                }
+            )
         write_csv(result.predictions, self._data_path("property_predictions_long.csv"))
         write_csv(result.predictions_wide, self._data_path("property_predictions_wide.csv"))
         write_csv(result.features, self._data_path("model_features.csv"))
@@ -326,6 +615,7 @@ class CasePipeline:
             "- Imported model factory: `src.models.factory.build_model` from current `il_property_prediction`.",
             f"- Model class: `{result.metadata['model_class']}`.",
             f"- Checkpoint: `{result.metadata['checkpoint_path']}`.",
+            f"- Checkpoint ensemble enabled: `{result.metadata['ensemble_enabled']}`; members: `{result.metadata['checkpoint_paths']}`.",
             f"- Ignored legacy dormant checkpoint keys: `{result.metadata['ignored_legacy_checkpoint_keys']}`.",
             f"- Property order: `{result.metadata['property_order']}`.",
             f"- Units: `{result.metadata['property_units']}`.",
@@ -342,6 +632,8 @@ class CasePipeline:
         return {
             **result.metadata,
             "requested_candidate_conditions": int(expected),
+            "main_temperature_points": int(len(main_temperatures)),
+            "extended_sensitivity_points": int(len(temperatures) - len(main_temperatures)),
             "successful_predictions": int(len(result.predictions)),
             "successful_candidates": int(result.predictions["candidate_id"].nunique()),
             "successful_unseen_candidates": int(
@@ -351,6 +643,9 @@ class CasePipeline:
                 ].nunique()
             ),
             "inference_failures": int(len(result.failures)),
+            "ensemble_member_prediction_rows": int(len(by_checkpoint))
+            if ensemble_enabled
+            else 0,
         }
 
     def proxies(self) -> dict[str, Any]:
@@ -362,6 +657,24 @@ class CasePipeline:
         predictions = pd.read_csv(prediction_path)
         proxies = compute_application_proxies(predictions, self.config["proxies"])
         write_csv(proxies, self._data_path("application_proxies_temperature.csv"))
+        inference_metadata = json.loads(
+            (self.paths["audit"] / "inference_pipeline.json").read_text(encoding="utf-8")
+        )
+        ensemble_proxy_rows = 0
+        if bool(inference_metadata.get("ensemble_enabled", False)):
+            member_predictions = pd.read_csv(
+                self._data_path("property_predictions_by_checkpoint.csv")
+            )
+            member_proxy_frames = [
+                compute_application_proxies(group.copy(), self.config["proxies"])
+                for _, group in member_predictions.groupby("checkpoint_name", sort=True)
+            ]
+            member_proxies = pd.concat(member_proxy_frames, ignore_index=True)
+            write_csv(
+                member_proxies,
+                self._data_path("application_proxies_by_checkpoint.csv"),
+            )
+            ensemble_proxy_rows = len(member_proxies)
         proxy_columns = [
             "cp_mass_J_kg-1_K-1",
             "volumetric_heat_capacity",
@@ -383,6 +696,7 @@ class CasePipeline:
         write_csv(wide.reset_index(), self._data_path("application_proxies_wide.csv"))
         return {
             "candidate_conditions": int(len(proxies)),
+            "ensemble_member_proxy_rows": int(ensemble_proxy_rows),
             "proxy_warning_rows": int(proxies["proxy_warnings"].fillna("").ne("").sum()),
         }
 
@@ -393,9 +707,24 @@ class CasePipeline:
         if not proxy_path.exists():
             raise FileNotFoundError("Proxy output is required before curve-quality audit")
         proxies = pd.read_csv(proxy_path)
-        flags = audit_curve_quality(proxies, self._benchmark(), self.config["curve_quality"])
-        counts = curve_counts(flags)
-        summary = summarize_whole_temperature_window(proxies)
+        if "analysis_window" not in proxies:
+            proxies["analysis_window"] = "main"
+        main_proxies = proxies[proxies["analysis_window"].eq("main")].copy()
+        sensitivity_proxies = proxies[
+            proxies["analysis_window"].eq("extended_sensitivity")
+        ].copy()
+        main_flags = audit_curve_quality(
+            main_proxies, self._benchmark(), self.config["curve_quality"]
+        )
+        main_flags["analysis_window"] = "main"
+        sensitivity_flags = audit_curve_quality(
+            sensitivity_proxies, self._benchmark(), self.config["curve_quality"]
+        ) if not sensitivity_proxies.empty else main_flags.iloc[0:0].copy()
+        if not sensitivity_flags.empty:
+            sensitivity_flags["analysis_window"] = "extended_sensitivity"
+        flags = pd.concat([main_flags, sensitivity_flags], ignore_index=True)
+        counts = curve_counts(main_flags)
+        summary = summarize_whole_temperature_window(main_proxies)
         summary = summary.merge(counts, on="candidate_id", how="left", suffixes=("", "_audit"))
         for column in ["curve_warning_count", "severe_curve_failure_count"]:
             audit_column = f"{column}_audit"
@@ -454,6 +783,18 @@ class CasePipeline:
         training["_anion"] = training["IL_SMILES"].map(
             lambda value: parsed.get(str(value)).canonical_anion_smiles if str(value) in parsed else None
         )
+        cation_family_map = {
+            smiles: ion_family(smiles, "cation")
+            for smiles in training["_cation"].dropna().unique()
+        }
+        anion_family_map = {
+            smiles: ion_family(smiles, "anion")
+            for smiles in training["_anion"].dropna().unique()
+        }
+        training["_cation_family"] = training["_cation"].map(cation_family_map)
+        training["_anion_family"] = training["_anion"].map(anion_family_map)
+        cation_family_support = training.groupby("_cation_family")["_cation"].nunique()
+        anion_family_support = training.groupby("_anion_family")["_anion"].nunique()
         property_columns = [f"{name}_ActualValue" for name in PROPERTY_UNITS]
         training["_label_count"] = training[property_columns].notna().sum(axis=1)
         metadata_rows = []
@@ -484,8 +825,12 @@ class CasePipeline:
                     "pair_seen": bool(row.pair_seen_in_training),
                     "cation_support_count": int(row.cation_support_count),
                     "anion_support_count": int(row.anion_support_count),
-                    "cation_family_support": int(row.cation_support_count),
-                    "anion_family_support": int(row.anion_support_count),
+                    "cation_family_support": int(
+                        cation_family_support.get(str(row.cation_family), 0)
+                    ),
+                    "anion_family_support": int(
+                        anion_family_support.get(str(row.anion_family), 0)
+                    ),
                     "property_support_count": int(
                         min(cation_rows["_label_count"].sum(), anion_rows["_label_count"].sum())
                     ),
@@ -543,12 +888,50 @@ class CasePipeline:
 
         predictions = pd.read_csv(self._data_path("property_predictions_long.csv"))
         proxies = pd.read_csv(self._data_path("application_proxies_temperature.csv"))
+        inference_metadata = json.loads(
+            (self.paths["audit"] / "inference_pipeline.json").read_text(encoding="utf-8")
+        )
         paths = list(self.config["model"].get("checkpoint_paths", []))
         if not paths and self.config["model"].get("checkpoint_path"):
             paths = [self.config["model"]["checkpoint_path"]]
-        property_table, proxy_table, feasibility, status = estimate_uncertainty(
-            predictions, proxies, paths, self.config["uncertainty"]
+        ensemble_enabled = bool(inference_metadata.get("ensemble_enabled", False))
+        uncertainty_predictions = (
+            pd.read_csv(self._data_path("property_predictions_by_checkpoint.csv"))
+            if ensemble_enabled
+            else predictions
         )
+        uncertainty_proxies = (
+            pd.read_csv(self._data_path("application_proxies_by_checkpoint.csv"))
+            if ensemble_enabled
+            else proxies
+        )
+        property_table, proxy_table, feasibility, status = estimate_uncertainty(
+            uncertainty_predictions,
+            uncertainty_proxies,
+            paths,
+            self.config["uncertainty"],
+        )
+        if status["uncertainty_status"] == "checkpoint_ensemble":
+            robust = pd.read_csv(self._data_path("candidate_robust_summary.csv"))
+            ad = pd.read_csv(self._data_path("applicability_domain.csv"))
+            library = pd.read_csv(self._data_path("candidate_library.csv"))
+            fixed_thresholds = derive_reference_thresholds(
+                robust, self.config["screening"]
+            )
+            feasibility = estimate_ensemble_decision_probabilities(
+                uncertainty_proxies,
+                self._benchmark(),
+                ad,
+                library,
+                fixed_thresholds,
+                self.config["curve_quality"],
+                self.config["screening"],
+                self.config["pareto"],
+            )
+            status["decision_probability_status"] = (
+                "full_window_constraints_and_pareto_propagated"
+            )
+            status["fixed_thresholds"] = fixed_thresholds
         write_csv(property_table, self._data_path("property_uncertainty.csv"))
         write_csv(proxy_table, self._data_path("proxy_uncertainty.csv"))
         write_csv(feasibility, self._data_path("feasibility_probability.csv"))
@@ -602,7 +985,12 @@ class CasePipeline:
             ["candidate_id", "AD_status"]
         ]
         flags = pd.read_csv(self._data_path("curve_quality_flags.csv"))
-        counts = curve_counts(flags)
+        main_flags = (
+            flags[flags["analysis_window"].eq("main")]
+            if "analysis_window" in flags
+            else flags
+        )
+        counts = curve_counts(main_flags)
         merged = proxies.merge(ad, on="candidate_id", how="left").merge(
             counts, on="candidate_id", how="left"
         )

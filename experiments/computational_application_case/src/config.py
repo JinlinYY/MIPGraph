@@ -10,16 +10,10 @@ import numpy as np
 import yaml
 
 from .paths import ensure_output_within_case, locate_project_root, resolve_project_path
+from .schema import PROPERTY_NAMES
 
 
-EXPECTED_PROPERTIES = [
-    "Density",
-    "ElectricalConductivity",
-    "HeatCapacity",
-    "SurfaceTension",
-    "ThermalConductivity",
-    "Viscosity",
-]
+EXPECTED_PROPERTIES = list(PROPERTY_NAMES)
 
 
 def _deep_merge(base: dict[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
@@ -144,6 +138,10 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
             path = resolve_project_path(root, value)
             if not path.exists():
                 raise FileNotFoundError(f"Configured artefact does not exist: {path}")
+    for checkpoint in config["model"].get("checkpoint_paths", []):
+        path = resolve_project_path(root, checkpoint)
+        if not path.exists():
+            raise FileNotFoundError(f"Configured ensemble checkpoint does not exist: {path}")
     return config
 
 
@@ -162,4 +160,3 @@ def load_case_config(
     root = locate_project_root(path) if requested_root == "auto" else Path(requested_root).resolve()
     config["_config_path"] = str(path)
     return validate_config(config, root)
-

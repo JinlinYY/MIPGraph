@@ -18,9 +18,12 @@ PROJECT_ROOT = CASE_DIR.parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from experiments.computational_application_case.src.config import load_case_config  # noqa: E402
+from experiments.computational_application_case.src.config import (  # noqa: E402
+    load_case_config,
+    temperature_grid,
+)
 from experiments.computational_application_case.src.io_utils import write_json  # noqa: E402
-from experiments.computational_application_case.src.model_adapter import PROPERTY_UNITS  # noqa: E402
+from experiments.computational_application_case.src.schema import PROPERTY_UNITS  # noqa: E402
 
 
 def _assert_close(actual: pd.Series, expected: pd.Series, label: str) -> None:
@@ -56,6 +59,11 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     checks["complete_candidate_temperature_grid"] = bool(
         len(predictions) == len(library) * temperature_count
         and predictions.groupby("candidate_id").size().eq(temperature_count).all()
+    )
+    checks["primary_summary_uses_main_window_only"] = bool(
+        robust["expected_temperature_point_count"]
+        .eq(len(temperature_grid(config["conditions"])))
+        .all()
     )
     checks["zero_inference_failures"] = failures.empty
     checks["all_pairs_monovalent"] = bool(
@@ -135,6 +143,10 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     checks["ad_statuses_are_declared"] = set(ad["AD_status"]).issubset(
         {"in_domain", "borderline", "out_of_domain"}
     )
+    checks["ad_includes_family_support"] = {
+        "cation_family_support",
+        "anion_family_support",
+    }.issubset(ad.columns)
     report_path = output_dir / "report" / "computational_application_case_results.md"
     report_text = report_path.read_text(encoding="utf-8").lower()
     prohibited = [

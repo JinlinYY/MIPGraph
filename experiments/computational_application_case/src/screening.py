@@ -9,16 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .pareto import add_utopia_distance, non_dominated_sort
-
-
-PROPERTY_NAMES = [
-    "Density",
-    "ElectricalConductivity",
-    "HeatCapacity",
-    "SurfaceTension",
-    "ThermalConductivity",
-    "Viscosity",
-]
+from .schema import PROPERTY_NAMES
 
 
 def _relative_differences(values: np.ndarray, epsilon: float = 1.0e-12) -> np.ndarray:
@@ -235,22 +226,33 @@ def screen_candidates(
 ) -> pd.DataFrame:
     """Apply structure, inference, curve, AD, and thermophysical hard constraints."""
 
-    ad_columns = ["candidate_id", "AD_status", "AD_reason"]
-    merged = robust_summary.merge(
-        applicability_domain[ad_columns], on="candidate_id", how="left", validate="one_to_one"
-    )
     library_columns = [
         column
         for column in [
             "candidate_id",
+            "candidate_type",
             "cation_charge",
             "anion_charge",
             "generation_status",
         ]
         if column in candidate_library
     ]
+    library_base = candidate_library[library_columns].rename(
+        columns={"candidate_type": "candidate_type_library"}
+    )
+    merged = library_base.merge(
+        robust_summary, on="candidate_id", how="left", validate="one_to_one"
+    )
+    if "candidate_type" in merged:
+        merged["candidate_type"] = merged["candidate_type"].fillna(
+            merged["candidate_type_library"]
+        )
+    else:
+        merged["candidate_type"] = merged["candidate_type_library"]
+    merged = merged.drop(columns="candidate_type_library")
+    ad_columns = ["candidate_id", "AD_status", "AD_reason"]
     merged = merged.merge(
-        candidate_library[library_columns], on="candidate_id", how="left", validate="one_to_one"
+        applicability_domain[ad_columns], on="candidate_id", how="left", validate="one_to_one"
     )
     required_metrics = [
         "conductivity_worst",
@@ -264,13 +266,18 @@ def screen_candidates(
         & merged.get("anion_charge", -1).eq(-1)
         & merged.get("generation_status", "retained").astype(str).str.startswith("retained")
     )
-    merged["pass_inference"] = np.isfinite(
+    complete_grid = (
+        merged["temperature_grid_complete"].eq(True)
+        if "temperature_grid_complete" in merged
+        else pd.Series(False, index=merged.index)
+    )
+    merged["pass_inference"] = complete_grid & np.isfinite(
         merged[required_metrics].to_numpy(dtype=float)
     ).all(axis=1)
     merged["pass_curve_quality"] = merged.get(
         "severe_curve_failure_count", 0
     ).fillna(0).eq(0)
-    merged["pass_AD"] = ~merged["AD_status"].eq("out_of_domain")
+    merged["pass_AD"] = merged["AD_status"].isin(["in_domain", "borderline"])
     merged["pass_conductivity"] = merged["conductivity_worst"] >= float(
         thresholds["conductivity_min"]
     )
@@ -409,4 +416,3 @@ def prioritize_candidates(
     final = ordered.head(selection_count).drop(columns=["_ad_order", "_distance_order"])
     ranked = ranked.drop(columns=["_ad_order", "_distance_order"])
     return ranked.reset_index(drop=True), final.reset_index(drop=True)
-

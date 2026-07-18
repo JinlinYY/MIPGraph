@@ -149,6 +149,14 @@ def _ion_family(smiles: str, role: str) -> str:
     return "other_cation"
 
 
+def ion_family(smiles: str, role: str) -> str:
+    """Return the deterministic coarse ion family used by support-aware AD."""
+
+    if role not in {"cation", "anion"}:
+        raise ValueError(f"Ion role must be cation or anion, got {role!r}")
+    return _ion_family(smiles, role)
+
+
 def _parse_frame(
     frame: pd.DataFrame,
     require_monovalent: bool,

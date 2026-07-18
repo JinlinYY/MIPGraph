@@ -16,16 +16,11 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
+from .schema import PROPERTY_UNITS
+
 
 Numeric = Union[float, np.ndarray, pd.Series]
-SI_UNITS = {
-    "Density": "kg m^-3",
-    "ElectricalConductivity": "S m^-1",
-    "HeatCapacity": "J mol^-1 K^-1",
-    "SurfaceTension": "N m^-1",
-    "ThermalConductivity": "W m^-1 K^-1",
-    "Viscosity": "Pa s",
-}
+SI_UNITS = dict(PROPERTY_UNITS)
 _UNIT_MARKER = "mipgraph_property_units"
 
 

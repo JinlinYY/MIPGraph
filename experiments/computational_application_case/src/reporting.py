@@ -153,11 +153,6 @@ def _candidate_bullets(final: pd.DataFrame) -> list[str]:
     return lines
 
 
-def _latex_escape(text: str) -> str:
-    replacements = {"\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}", "^": r"\textasciicircum{}"}
-    return "".join(replacements.get(char, char) for char in text)
-
-
 def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str, Any]:
     """Generate an auditable Markdown/LaTeX case report and terminal summary."""
 
@@ -171,13 +166,53 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
     final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
     counterfactual = _read_csv(paths["data"] / "counterfactual_summary.csv")
     classes = sorted(final["recommendation_class"].dropna().astype(str).unique().tolist()) if not final.empty else []
+    case_root = Path(config["_project_root"]) / "experiments" / "computational_application_case"
+    source_files = [
+        str(path.relative_to(Path(config["_project_root"])))
+        for path in sorted(case_root.rglob("*"))
+        if path.is_file()
+        and "__pycache__" not in path.parts
+        and (
+            "outputs" not in path.parts
+            or path.name in {".gitignore", ".gitkeep", "README.md"}
+        )
+    ]
+    test_record = _read_json(paths["audit"] / "unit_test_results.json")
+    test_stdout = str(test_record.get("stdout", "")).strip().splitlines()
+    is_smoke = bool(config["figures"].get("simplified", False))
+    smoke_audit = _read_json(case_root / "outputs" / "smoke_test" / "audit" / "final_output_audit.json")
+    uncertainty_available = uncertainty.get("uncertainty_status") == "checkpoint_ensemble"
+    unresolved = ["reference embedding distance unavailable"]
+    if not uncertainty_available:
+        unresolved.append("predictive uncertainty unavailable for the single configured checkpoint")
     summary = {
         "run_status": "completed",
+        "new_files": source_files,
+        "modified_existing_files": [],
+        "core_model_code_modified": False,
+        "reused_il_property_prediction_modules": [
+            "src.chem.smiles_utils",
+            "src.chem.graph_featurizer",
+            "src.chem.global_descriptors",
+            "src.models.factory",
+            "src.models.mipgraph",
+            "src.data.scaler",
+        ],
         "configuration": config.get("_config_path"),
+        "data_file": str(config["data"]["benchmark_path"]),
+        "split_file": str(config["data"]["split_path"]),
         "checkpoint": inference.get("checkpoint_path", config["model"].get("checkpoint_path")),
+        "checkpoint_paths": inference.get("checkpoint_paths", []),
+        "scalers": {
+            "condition_scaler": inference.get("condition_scaler", {}),
+            "target_means": inference.get("target_means", []),
+            "target_stds": inference.get("target_stds", []),
+            "inverse_transform": inference.get("target_inverse_transform"),
+        },
         "deprecated_web_code_used": False,
         "unit_audit_passed": bool(unit_audit.get("passed", False)),
         "property_order": inference.get("property_order", list(unit_audit.get("property_order", []))),
+        "property_units": inference.get("property_units", unit_audit.get("units", {})),
         "initial_cations": generation.get("initial_cations", 0),
         "initial_anions": generation.get("initial_anions", 0),
         "theoretical_combinations": generation.get("theoretical_combinations", 0),
@@ -202,6 +237,16 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "tables": str(paths["tables"]),
         "report": str(paths["report"] / "computational_application_case_results.md"),
         "output_root": str(paths["root"]),
+        "unit_test_status": test_record.get("status", "not_recorded"),
+        "unit_test_result": test_stdout[-1] if test_stdout else "not_recorded",
+        "smoke_test_status": "completed" if is_smoke else smoke_audit.get("status", "not_recorded"),
+        "full_run_status": "not_applicable_to_smoke_output" if is_smoke else "completed",
+        "unresolved_issues": unresolved,
+        "reproducible_commands": {
+            "tests": "python experiments/computational_application_case/scripts/run_unit_tests.py",
+            "smoke": "python experiments/computational_application_case/run_all.py --config experiments/computational_application_case/configs/smoke_test.yaml --smoke-test --force",
+            "full": "python experiments/computational_application_case/run_all.py --config experiments/computational_application_case/configs/default.yaml --force",
+        },
     }
     write_json(summary, paths["report"] / "computational_application_case_summary.json")
     threshold_payload = screening.get("thresholds", {})
@@ -214,7 +259,7 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 2. Candidate-space construction",
         "",
-        "The application reused the current `il_property_prediction` model factory, graph builder, trained checkpoint, graph cache, ion feature cache, cleaned benchmark, and declared row-level split. The archived implementation was not imported or consulted during result generation.",
+        f"The application reused the current `il_property_prediction` model factory, graph builder, trained checkpoint, graph cache, ion feature cache, cleaned benchmark, and declared row-level split. The training split yielded {generation.get('initial_cations', 0)} supported cations and {generation.get('initial_anions', 0)} supported anions, defining {generation.get('theoretical_combinations', 0)} theoretical combinations. After canonicalization, charge checks, support filtering, observed-pair exclusion, and deterministic descriptor coverage, {generation.get('valid_unseen_pool', 0)} valid unseen pairs remained before the configured cap and {generation.get('unseen_candidates', 0)} entered inference. The archived implementation was not imported or consulted during result generation.",
         "",
         "## 3. Six-property inference coverage",
         "",
@@ -222,11 +267,11 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 4. Unit audit",
         "",
-        f"The source-unit audit passed={unit_audit.get('passed', False)}. The training split yielded {generation.get('initial_cations', 0)} supported cations and {generation.get('initial_anions', 0)} supported anions, defining {generation.get('theoretical_combinations', 0)} theoretical combinations. After canonicalization, charge checks, support filtering, observed-pair exclusion, cache compatibility, and the configured cap, {generation.get('unseen_candidates', 0)} unseen pair recombinations and {generation.get('observed_references', 0)} observed references entered inference.",
+        f"The source-unit audit passed={unit_audit.get('passed', False)}. Predictions retain density in kg m^-3, conductivity in S m^-1, molar heat capacity in J mol^-1 K^-1, surface tension in N m^-1, thermal conductivity in W m^-1 K^-1, and viscosity in Pa s. The heat-capacity basis is molar and is converted once only when constructing mass-specific and volumetric proxies.",
         "",
         "## 5. Physical and curve-quality audit",
         "",
-        "Predictions preserve the checkpoint's raw physical units: density in kg m^-3, electrical conductivity in S m^-1, molar heat capacity in J mol^-1 K^-1, surface tension in N m^-1, thermal conductivity in W m^-1 K^-1, and viscosity in Pa s. Temperature curves are retained without smoothing or post-hoc replacement.",
+        "Temperature curves are retained without smoothing or post-hoc replacement. Each main-window curve is checked for non-finite or non-positive values, excursions beyond benchmark property ranges, temperature extrapolation, and adjacent-temperature jumps relative to observed-reference behavior. Severe failures are excluded by the hard decision rule. When enabled, extended-window rows and flags are stored as sensitivity outputs and do not enter the main robust summary or screening decision.",
         "",
         "## 6. Application proxy construction",
         "",
@@ -234,11 +279,11 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 7. Applicability-domain analysis",
         "",
-        f"Each complete temperature curve is checked for non-finite or non-positive values, excursions beyond benchmark property ranges, temperature extrapolation, and adjacent-temperature jumps relative to observed-reference behavior. Severe failures are excluded by the hard decision rule; warning records remain visible in `curve_quality_flags.csv`. Descriptor-space distances are calibrated only on {ad_step.get('reference_count', 0)} training-domain ion pairs. Counts were in-domain={ad_step.get('in_domain', 0)}, borderline={ad_step.get('borderline', 0)}, and out-of-domain={ad_step.get('out_of_domain', 0)}.",
+        f"Descriptor-space distances are calibrated only on {ad_step.get('reference_count', 0)} training-domain ion pairs. Ion-level support, ion-family support, and temperature coverage can downgrade the descriptor result. Counts were in-domain={ad_step.get('in_domain', 0)}, borderline={ad_step.get('borderline', 0)}, and out-of-domain={ad_step.get('out_of_domain', 0)}. Embedding distance remains unavailable because an identically processed complete reference embedding bank is absent.",
         "",
         "## 8. Whole-temperature-window screening",
         "",
-        f"Ion support and temperature coverage can downgrade descriptor-based status. Embedding distance is reported as unavailable because a complete, identically processed reference embedding bank is not present. Observed-reference thresholds were frozen before unseen-candidate screening: conductivity >= {_fmt(threshold_payload.get('conductivity_min'))} S m^-1, viscosity <= {_fmt(threshold_payload.get('viscosity_max'))} Pa s, volumetric heat capacity >= {_fmt(threshold_payload.get('volumetric_heat_capacity_min'))} J m^-3 K^-1, thermal diffusivity >= {_fmt(threshold_payload.get('thermal_diffusivity_min'))} m^2 s^-1, and interfacial-window deviation <= {_fmt(threshold_payload.get('interfacial_deviation_max'))} reference IQR.",
+        f"Observed-reference thresholds were frozen before unseen-candidate screening: conductivity >= {_fmt(threshold_payload.get('conductivity_min'))} S m^-1, viscosity <= {_fmt(threshold_payload.get('viscosity_max'))} Pa s, volumetric heat capacity >= {_fmt(threshold_payload.get('volumetric_heat_capacity_min'))} J m^-3 K^-1, thermal diffusivity >= {_fmt(threshold_payload.get('thermal_diffusivity_min'))} m^2 s^-1, and interfacial-window deviation <= {_fmt(threshold_payload.get('interfacial_deviation_max'))} reference IQR. Complete main-window coverage, curve quality, and allowed AD status are independent fail-closed gates.",
         "",
         "## 9. Pareto analysis",
         "",
@@ -254,7 +299,7 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 12. Limitations",
         "",
-        "The selected checkpoint supplies point predictions only, and fewer than three compatible checkpoints were configured; uncertainty is therefore explicitly marked unavailable rather than synthesized. The candidates are unseen ion-pair recombinations, but their component ions are deliberately supported by the training split and feature cache. Descriptor AD, ion-frequency support, and temperature coverage cannot establish phase stability, purity effects, long-term electrochemical behavior, synthesis accessibility, or process-scale safety. Recommended follow-up is independent thermophysical measurement, electrochemical-window characterization, phase-behavior assessment, and iterative model updating with newly measured labels.",
+        ("At least three compatible checkpoints were propagated through property, proxy, hard-constraint, and Pareto calculations; ensemble spread still captures model variation only. " if uncertainty_available else "The selected checkpoint supplies point predictions only, so uncertainty is explicitly marked unavailable rather than synthesized. ") + "The candidates are unseen ion-pair recombinations, but their component ions are deliberately supported by the training split and feature cache. Descriptor AD, family support, and temperature coverage cannot establish phase stability, purity effects, long-term electrochemical behavior, synthesis accessibility, or process-scale safety.",
         "",
         "## 13. Recommended downstream qualification",
         "",
@@ -282,6 +327,7 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         f"| pareto-1={summary['pareto_rank_1']} | final={summary['final_recommendations']} "
         "| unit-audit=PASS | Deprecated web code used: No"
     )
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
     print(terminal)
     return {
         "markdown_report": str(markdown_path),

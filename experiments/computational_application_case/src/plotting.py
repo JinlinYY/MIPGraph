@@ -158,22 +158,43 @@ def _panel_c(container: Any, paths: dict[str, Path]) -> None:
         for ax in axes:
             _empty(ax, "No predictions")
         return
+    if "analysis_window" in predictions:
+        predictions = predictions[predictions["analysis_window"].eq("main")]
     selected = _select_curve_candidates(predictions, final)
     flags = _read_csv(paths["data"] / "curve_quality_flags.csv")
+    negative: str | None = None
     if not flags.empty:
         severe = flags[flags["severity"].eq("severe")]
         if not severe.empty:
             negative = str(severe["candidate_id"].value_counts().index[0])
             if negative not in selected:
                 selected.append(negative)
-    palette = [COLORS["purple"], COLORS["orange"], COLORS["green"], COLORS["blue"], COLORS["gray"]]
+    palette = [
+        COLORS["purple"],
+        COLORS["orange"],
+        COLORS["green"],
+        COLORS["blue"],
+        COLORS["gray"],
+        COLORS["red"],
+    ]
     for property_name, ax in zip(PROPERTY_UNITS, axes):
         for color, candidate_id in zip(palette, selected):
             group = predictions[predictions["candidate_id"].astype(str).eq(candidate_id)].sort_values("temperature_K")
             if group.empty:
                 continue
             label = candidate_id if len(candidate_id) <= 16 else candidate_id[:13] + "…"
-            ax.plot(group["temperature_K"], group[property_name], marker="o", ms=2.2, lw=1.0, color=color, label=label)
+            if candidate_id == negative:
+                label += " (curve-flag example)"
+            ax.plot(
+                group["temperature_K"],
+                group[property_name],
+                marker="o",
+                ms=2.2,
+                lw=1.0,
+                ls="--" if candidate_id == negative else "-",
+                color=color,
+                label=label,
+            )
         ax.set_title(property_name, fontsize=7.5)
         ax.set_ylabel(PROPERTY_UNITS[property_name], fontsize=6.3)
         ax.tick_params(labelsize=6.1)
@@ -195,6 +216,8 @@ def _panel_d(container: Any, paths: dict[str, Path]) -> None:
         for ax in axes:
             _empty(ax, "No proxy outputs")
         return
+    if "analysis_window" in proxies:
+        proxies = proxies[proxies["analysis_window"].eq("main")]
     selected = _select_curve_candidates(proxies, final)[:4]
     definitions = [
         ("transport_favorability", "Transport favorability", "standardized score"),

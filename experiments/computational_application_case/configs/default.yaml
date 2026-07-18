@@ -69,6 +69,7 @@ applicability_domain:
   borderline_quantile: 0.95
   use_embedding_distance: auto
   minimum_ion_support_for_in_domain: 5
+  minimum_family_support_for_in_domain: 2
 
 uncertainty:
   mode: auto
@@ -114,4 +115,3 @@ figures:
 
 outputs:
   output_dir: experiments/computational_application_case/outputs
-

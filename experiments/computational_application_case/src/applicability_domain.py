@@ -179,6 +179,9 @@ def assess_applicability_domain(
     scored.insert(0, "candidate_id", candidate_features["candidate_id"].to_numpy())
     output = metadata.merge(scored, on="candidate_id", how="inner", validate="one_to_one")
     minimum_support = int(config.get("minimum_ion_support_for_in_domain", 1))
+    minimum_family_support = int(
+        config.get("minimum_family_support_for_in_domain", 0)
+    )
     reasons: list[str] = []
     final_statuses: list[str] = []
     for row in output.itertuples(index=False):
@@ -188,6 +191,8 @@ def assess_applicability_domain(
         anion_seen = bool(getattr(row, "anion_seen", True))
         cation_support = int(getattr(row, "cation_support_count", 0))
         anion_support = int(getattr(row, "anion_support_count", 0))
+        cation_family_support = int(getattr(row, "cation_family_support", 0))
+        anion_family_support = int(getattr(row, "anion_family_support", 0))
         temperature_status = str(getattr(row, "temperature_domain_status", "in_domain"))
         candidate_type = str(getattr(row, "candidate_type", ""))
         if not cation_seen or not anion_seen or candidate_type == "one_ion_extrapolation":
@@ -198,6 +203,12 @@ def assess_applicability_domain(
         ):
             status = "borderline"
             row_reasons.append("low_ion_support")
+        if status == "in_domain" and (
+            cation_family_support < minimum_family_support
+            or anion_family_support < minimum_family_support
+        ):
+            status = "borderline"
+            row_reasons.append("low_ion_family_support")
         if temperature_status != "in_domain" and status == "in_domain":
             status = "borderline"
             row_reasons.append("temperature_extrapolation")
@@ -211,4 +222,3 @@ def assess_applicability_domain(
     output["descriptor_in_domain_threshold"] = model.in_domain_threshold
     output["descriptor_borderline_threshold"] = model.borderline_threshold
     return output, model
-

@@ -10,6 +10,7 @@ from experiments.computational_application_case.src.proxies import (
     summarize_whole_temperature_window,
     transport_favorability,
 )
+from experiments.computational_application_case.src.screening import screen_candidates
 from experiments.computational_application_case.src.units import (
     simplified_thermal_diffusion_timescale,
     thermal_diffusivity,
@@ -86,3 +87,69 @@ def test_nonpositive_or_nan_values_propagate_as_nan() -> None:
     assert np.isnan(zero_score)
     assert np.isnan(nan_score)
 
+
+def test_whole_window_summary_marks_incomplete_candidate_grid() -> None:
+    frame = pd.DataFrame(
+        {
+            "candidate_id": ["complete", "complete", "partial"],
+            "candidate_type": ["unseen_pair_recombination"] * 3,
+            "temperature_K": [298.15, 303.15, 298.15],
+            "ElectricalConductivity": [1.0, 2.0, 1.0],
+            "Viscosity": [0.2, 0.1, 0.2],
+            "transport_favorability": [1.0, 2.0, 1.0],
+            "volumetric_heat_capacity": [2.0e6] * 3,
+            "thermal_diffusivity": [1.0e-7] * 3,
+            "simplified_thermal_diffusion_timescale": [10.0] * 3,
+            "interfacial_window_deviation": [0.0] * 3,
+            "Density": [1200.0] * 3,
+        }
+    )
+    summary = summarize_whole_temperature_window(frame).set_index("candidate_id")
+    assert bool(summary.loc["complete", "temperature_grid_complete"])
+    assert not bool(summary.loc["partial", "temperature_grid_complete"])
+
+
+def test_screening_fails_closed_for_missing_summary_or_ad() -> None:
+    robust = pd.DataFrame(
+        {
+            "candidate_id": ["complete"],
+            "candidate_type": ["unseen_pair_recombination"],
+            "temperature_grid_complete": [True],
+            "conductivity_worst": [2.0],
+            "viscosity_worst": [0.1],
+            "volumetric_heat_capacity_worst": [2.0e6],
+            "thermal_diffusivity_worst": [1.0e-7],
+            "interfacial_deviation_worst": [0.0],
+            "severe_curve_failure_count": [0],
+        }
+    )
+    library = pd.DataFrame(
+        {
+            "candidate_id": ["complete", "missing"],
+            "candidate_type": ["unseen_pair_recombination"] * 2,
+            "cation_charge": [1, 1],
+            "anion_charge": [-1, -1],
+            "generation_status": ["retained", "retained"],
+        }
+    )
+    ad = pd.DataFrame(
+        {
+            "candidate_id": ["complete"],
+            "AD_status": ["in_domain"],
+            "AD_reason": ["descriptor_distance=in_domain"],
+        }
+    )
+    thresholds = {
+        "conductivity_min": 1.0,
+        "viscosity_max": 1.0,
+        "volumetric_heat_capacity_min": 1.0e6,
+        "thermal_diffusivity_min": 1.0e-8,
+        "interfacial_deviation_max": 1.0,
+    }
+    result = screen_candidates(robust, ad, library, thresholds, {}).set_index(
+        "candidate_id"
+    )
+    assert bool(result.loc["complete", "final_feasible"])
+    assert not bool(result.loc["missing", "pass_inference"])
+    assert not bool(result.loc["missing", "pass_AD"])
+    assert not bool(result.loc["missing", "final_feasible"])

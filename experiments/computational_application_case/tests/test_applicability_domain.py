@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from experiments.computational_application_case.src.applicability_domain import (
     classify_ad_distance,
+    assess_applicability_domain,
     fit_descriptor_ad,
     score_descriptor_ad,
 )
@@ -68,3 +70,38 @@ def test_constant_descriptor_columns_are_removed_before_scaling() -> None:
     assert model.kept_columns.tolist() == [False, True]
     scored = score_descriptor_ad(model, np.asarray([[999.0, 1.0]]))
     assert np.isfinite(scored.loc[0, "descriptor_knn_distance"])
+
+
+def test_low_ion_family_support_downgrades_in_domain_candidate() -> None:
+    reference = pd.DataFrame(
+        {"reference_id": ["r1", "r2", "r3"], "d": [0.0, 1.0, 2.0]}
+    )
+    candidates = pd.DataFrame({"candidate_id": ["A"], "d": [1.0]})
+    metadata = pd.DataFrame(
+        {
+            "candidate_id": ["A"],
+            "candidate_type": ["unseen_pair_recombination"],
+            "cation_seen": [True],
+            "anion_seen": [True],
+            "cation_support_count": [10],
+            "anion_support_count": [10],
+            "cation_family_support": [1],
+            "anion_family_support": [3],
+            "temperature_domain_status": ["in_domain"],
+        }
+    )
+    output, _ = assess_applicability_domain(
+        candidates,
+        reference,
+        metadata,
+        ["d"],
+        {
+            "descriptor_knn_k": 1,
+            "in_domain_quantile": 0.9,
+            "borderline_quantile": 0.95,
+            "minimum_ion_support_for_in_domain": 5,
+            "minimum_family_support_for_in_domain": 2,
+        },
+    )
+    assert output.loc[0, "AD_status"] == "borderline"
+    assert "low_ion_family_support" in output.loc[0, "AD_reason"]
