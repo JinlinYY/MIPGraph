@@ -8,7 +8,7 @@ import pytest
 from experiments.computational_application_case.scripts.build_protocol_stability_outputs import (
     validate_protocol_manifest,
 )
-from experiments.computational_application_case.src.config import load_case_config
+from experiments.computational_application_case.src.config import _read_with_inheritance
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -21,8 +21,14 @@ CONFIG = (
 )
 
 
-def _config() -> dict:
-    return load_case_config(CONFIG)
+def _config(path: Path = CONFIG) -> dict:
+    """Read the inherited protocol without requiring external model artefacts.
+
+    These tests audit the static decision contract. Checkpoint and feature-cache
+    existence is exercised by the runtime smoke tests instead.
+    """
+
+    return _read_with_inheritance(path)
 
 
 def test_formal_predictions_use_one_primary_checkpoint() -> None:
@@ -62,7 +68,7 @@ def test_protocol_configs_remain_sensitivity_only() -> None:
         "protocol_stability_ion_family.yaml": "il_level_family_pair_seed42.json",
     }
     for filename, split_name in expected_splits.items():
-        config = load_case_config(case_dir / "configs" / filename)
+        config = _config(case_dir / "configs" / filename)
         assert config["model"]["checkpoint_paths"] == []
         assert config["outputs"]["output_dir"] != _config()["outputs"]["output_dir"]
         assert config["data"]["split_path"].endswith(f"splits/{split_name}")
