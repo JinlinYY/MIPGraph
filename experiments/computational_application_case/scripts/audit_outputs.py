@@ -124,11 +124,6 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
         resistance,
         "reference-cell electrolyte resistance",
     )
-    _assert_close(
-        cell_metrics["electrolyte_RC_time_constant_s"],
-        resistance * float(scenario["nominal_capacitance_F"]),
-        "reference-cell RC contribution",
-    )
     power = float(scenario["charge_discharge_current_A"]) ** 2 * resistance
     _assert_close(
         cell_metrics["joule_heating_power_W"],
@@ -215,30 +210,30 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
         "high-temperature resistance retention",
     )
     checks["high_low_temperature_resistance_retention_exact"] = True
-    expected_worst_risk = (
+    expected_worst_exceedance = (
         main_cell_metrics.groupby("candidate_id", as_index=False)[
-            "reference_cell_risk_index"
+            "reference_cell_exceedance_index"
         ]
         .max()
         .rename(
             columns={
-                "reference_cell_risk_index": "expected_reference_cell_risk_index_worst"
+                "reference_cell_exceedance_index": "expected_reference_cell_exceedance_index_worst"
             }
         )
     )
-    audited_risk = cell_summary.assign(
+    audited_exceedance = cell_summary.assign(
         candidate_id=cell_summary["candidate_id"].astype(str)
     ).merge(
-        expected_worst_risk.assign(
-            candidate_id=expected_worst_risk["candidate_id"].astype(str)
+        expected_worst_exceedance.assign(
+            candidate_id=expected_worst_exceedance["candidate_id"].astype(str)
         ),
         on="candidate_id",
         validate="one_to_one",
     )
     _assert_close(
-        audited_risk["reference_cell_risk_index_worst"],
-        audited_risk["expected_reference_cell_risk_index_worst"],
-        "worst-temperature reference-cell risk index",
+        audited_exceedance["reference_cell_exceedance_index_worst"],
+        audited_exceedance["expected_reference_cell_exceedance_index_worst"],
+        "worst-temperature reference-cell exceedance index",
     )
     band_order = {
         "within_reference_envelope": 0,
@@ -247,21 +242,21 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     }
     expected_band_rows = []
     for candidate_id, group in main_cell_metrics.groupby("candidate_id"):
-        order = group["reference_cell_risk_band"].map(band_order)
+        order = group["reference_cell_exceedance_band"].map(band_order)
         selected = group[order.eq(order.max())].sort_values(
-            ["reference_cell_risk_index", "temperature_K"],
+            ["reference_cell_exceedance_index", "temperature_K"],
             ascending=[False, True],
         ).iloc[0]
         expected_band_rows.append(
             {
                 "candidate_id": str(candidate_id),
-                "expected_reference_cell_risk_band_worst": selected[
-                    "reference_cell_risk_band"
+                "expected_reference_cell_exceedance_band_worst": selected[
+                    "reference_cell_exceedance_band"
                 ],
-                "expected_reference_cell_risk_index_at_band_worst": selected[
-                    "reference_cell_risk_index"
+                "expected_reference_cell_exceedance_index_at_band_worst": selected[
+                    "reference_cell_exceedance_index"
                 ],
-                "expected_reference_cell_risk_band_worst_temperature_K": selected[
+                "expected_reference_cell_exceedance_band_worst_temperature_K": selected[
                     "temperature_K"
                 ],
             }
@@ -269,26 +264,26 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
     audited_bands = cell_summary.assign(
         candidate_id=cell_summary["candidate_id"].astype(str)
     ).merge(pd.DataFrame(expected_band_rows), on="candidate_id", validate="one_to_one")
-    if not audited_bands["reference_cell_risk_band_worst"].equals(
-        audited_bands["expected_reference_cell_risk_band_worst"]
+    if not audited_bands["reference_cell_exceedance_band_worst"].equals(
+        audited_bands["expected_reference_cell_exceedance_band_worst"]
     ):
-        raise AssertionError("Worst categorical reference-cell risk band is inconsistent")
+        raise AssertionError("Worst categorical reference-cell exceedance band is inconsistent")
     _assert_close(
-        audited_bands["reference_cell_risk_index_at_band_worst"],
-        audited_bands["expected_reference_cell_risk_index_at_band_worst"],
-        "risk index at worst categorical band",
+        audited_bands["reference_cell_exceedance_index_at_band_worst"],
+        audited_bands["expected_reference_cell_exceedance_index_at_band_worst"],
+        "exceedance index at worst categorical band",
     )
     _assert_close(
-        audited_bands["reference_cell_risk_band_worst_temperature_K"],
+        audited_bands["reference_cell_exceedance_band_worst_temperature_K"],
         audited_bands[
-            "expected_reference_cell_risk_band_worst_temperature_K"
+            "expected_reference_cell_exceedance_band_worst_temperature_K"
         ],
-        "temperature of worst categorical risk band",
+        "temperature of worst categorical exceedance band",
     )
-    checks["worst_temperature_reference_cell_risk_exact"] = True
+    checks["worst_temperature_reference_cell_exceedance_exact"] = True
     checks["reference_cell_summary_complete"] = bool(
         cell_summary["candidate_id"].nunique() == library["candidate_id"].nunique()
-        and set(cell_summary["reference_cell_risk_band_worst"]).issubset(
+        and set(cell_summary["reference_cell_exceedance_band_worst"]).issubset(
             {
                 "within_reference_envelope",
                 "elevated_reference_tail",
@@ -298,8 +293,8 @@ def audit_outputs(output_dir: Path, config: dict[str, Any]) -> dict[str, Any]:
         and np.isfinite(
             cell_summary[
                 [
-                    "reference_cell_risk_index_worst",
-                    "reference_cell_worst_temperature_K",
+                    "reference_cell_exceedance_index_worst",
+                    "reference_cell_exceedance_index_worst_temperature_K",
                 ]
             ].to_numpy(float)
         ).all()

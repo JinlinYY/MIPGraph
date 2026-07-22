@@ -33,7 +33,11 @@ candidate_generation:
   min_anion_support: 5
   max_cations: 30
   max_anions: 30
-  max_candidates: 600
+  max_candidates: 608
+  # Preserve the existing UPR-0001--UPR-0600 identifiers, then append the
+  # eight previously unevaluated identities in canonical-key order.  This
+  # anchor affects identifiers only; all 608 identity-new pairs are inferred.
+  stable_id_anchor_count: 600
   descriptor_prefilter_multiplier: 5
   require_monovalent_1to1: true
   exclude_observed_pairs: true
@@ -42,13 +46,13 @@ candidate_generation:
   allow_one_ion_extrapolation: false
 
 conditions:
-  temperature_start_K: 278.15
-  temperature_end_K: 373.15
+  temperature_start_K: 298.15
+  temperature_end_K: 353.15
   temperature_step_K: 5.0
   pressure_kPa: 101.325
   extended_temperature_start_K: 278.15
   extended_temperature_end_K: 373.15
-  run_extended_sensitivity: false
+  run_extended_sensitivity: true
 
 proxies:
   thermal_length_m: 0.001
@@ -58,17 +62,16 @@ proxies:
   reference_gamma_high_quantile: 0.90
 
 reference_cell:
-  scenario_name: normalized_conditional_reference_cell
+  scenario_name: 60_s_constant_current_thermal_stress
   electrode_area_cm2: 100.0
   separator_thickness_um: 100.0
   electrolyte_volume_mL: 1.0
-  nominal_capacitance_F: 10.0
   charge_discharge_current_A: 2.0
   convective_heat_transfer_coefficient_W_m2_K: 10.0
   exposed_face_count: 2
   transient_duration_s: 60.0
   reference_temperature_K: 298.15
-  risk_reference_quantiles:
+  exceedance_reference_quantiles:
     - 0.75
     - 0.95
 
@@ -93,11 +96,13 @@ uncertainty:
   conformal_alpha: 0.05
 
 screening:
+  reference_bootstrap_replicates: 500
+  reference_bootstrap_seed: 42
   conductivity_min_reference_quantile: 0.25
   viscosity_max_reference_quantile: 0.75
   volumetric_heat_capacity_min_reference_quantile: 0.25
   thermal_diffusivity_min_reference_quantile: 0.25
-  interfacial_deviation_max: 1.0
+  surface_tension_reference_envelope_deviation_max: 1.0
   exclude_out_of_domain: true
   exclude_severe_curve_failures: true
 
@@ -109,8 +114,6 @@ pareto:
       - thermal_diffusivity_worst
     minimize:
       - viscosity_worst
-      - interfacial_deviation_worst
-      - reference_cell_risk_index_worst
   final_candidate_min: 3
   final_candidate_max: 8
 

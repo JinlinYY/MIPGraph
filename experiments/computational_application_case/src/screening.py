@@ -198,7 +198,9 @@ def derive_reference_thresholds(
         name: float(np.nanquantile(reference[column].to_numpy(dtype=float), quantile))
         for name, (column, quantile) in definitions.items()
     }
-    thresholds["interfacial_deviation_max"] = float(config["interfacial_deviation_max"])
+    thresholds["surface_tension_reference_envelope_deviation_max"] = float(
+        config["surface_tension_reference_envelope_deviation_max"]
+    )
     thresholds["reference_count"] = int(len(reference))
     thresholds.update(
         {
@@ -250,7 +252,14 @@ def screen_candidates(
     else:
         merged["candidate_type"] = merged["candidate_type_library"]
     merged = merged.drop(columns="candidate_type_library")
-    ad_columns = ["candidate_id", "AD_status", "AD_reason"]
+    ad_columns = [
+        "candidate_id",
+        "AD_status",
+        "AD_reason",
+        "descriptor_knn_distance",
+        "descriptor_distance_percentile",
+    ]
+    ad_columns = [column for column in ad_columns if column in applicability_domain]
     merged = merged.merge(
         applicability_domain[ad_columns], on="candidate_id", how="left", validate="one_to_one"
     )
@@ -259,7 +268,7 @@ def screen_candidates(
         "viscosity_worst",
         "volumetric_heat_capacity_worst",
         "thermal_diffusivity_worst",
-        "interfacial_deviation_worst",
+        "surface_tension_reference_envelope_deviation_worst",
     ]
     merged["pass_structure"] = (
         merged.get("cation_charge", 1).eq(1)
@@ -290,9 +299,9 @@ def screen_candidates(
     merged["pass_thermal_diffusivity"] = merged[
         "thermal_diffusivity_worst"
     ] >= float(thresholds["thermal_diffusivity_min"])
-    merged["pass_interfacial_window"] = merged[
-        "interfacial_deviation_worst"
-    ] <= float(thresholds["interfacial_deviation_max"])
+    merged["pass_surface_tension_reference_envelope"] = merged[
+        "surface_tension_reference_envelope_deviation_worst"
+    ] <= float(thresholds["surface_tension_reference_envelope_deviation_max"])
     pass_columns = [
         "pass_structure",
         "pass_inference",
@@ -302,7 +311,7 @@ def screen_candidates(
         "pass_viscosity",
         "pass_heat_capacity",
         "pass_thermal_diffusivity",
-        "pass_interfacial_window",
+        "pass_surface_tension_reference_envelope",
     ]
     if not bool(config.get("exclude_out_of_domain", True)):
         pass_columns.remove("pass_AD")
@@ -402,17 +411,41 @@ def prioritize_candidates(
     ranked["downstream_priority"] = priorities
     ranked["uncertainty_status"] = ranked.get("uncertainty_status", "not_available")
     maximum = int(pareto_config["final_candidate_max"])
-    minimum = int(pareto_config["final_candidate_min"])
-    ranked["_ad_order"] = ranked["AD_status"].map(
-        {"in_domain": 0, "borderline": 1, "out_of_domain": 2}
-    ).fillna(3)
-    ranked["_distance_order"] = ranked["utopia_distance"].fillna(float("inf"))
-    ordered = ranked.sort_values(
-        ["_ad_order", "Pareto_rank", "_distance_order", "candidate_id"]
+    tie_break_columns = [
+        "utopia_distance",
+        "descriptor_knn_distance",
+        "cation_support_count",
+        "anion_support_count",
+        "canonical_il_key",
+    ]
+    available_tie_break_columns = [
+        column for column in tie_break_columns if column in ranked.columns
+    ]
+    ascending = {
+        "utopia_distance": True,
+        "descriptor_knn_distance": True,
+        "cation_support_count": False,
+        "anion_support_count": False,
+        "canonical_il_key": True,
+    }
+    rank_one = ranked[ranked["Pareto_rank"].eq(1)].sort_values(
+        available_tie_break_columns,
+        ascending=[ascending[column] for column in available_tie_break_columns],
+        kind="mergesort",
+        na_position="last",
     )
-    selection_count = min(maximum, len(ordered))
-    if selection_count < minimum:
-        selection_count = len(ordered)
-    final = ordered.head(selection_count).drop(columns=["_ad_order", "_distance_order"])
-    ranked = ranked.drop(columns=["_ad_order", "_distance_order"])
+    selected_ids = rank_one.head(maximum)["candidate_id"].astype(str).tolist()
+    ranked["formal_shortlist_selected"] = ranked["candidate_id"].astype(str).isin(selected_ids)
+    ranked["formal_shortlist_order"] = pd.Series([pd.NA] * len(ranked), dtype="Int64")
+    order_map = {candidate_id: order for order, candidate_id in enumerate(selected_ids, start=1)}
+    ranked.loc[ranked["formal_shortlist_selected"], "formal_shortlist_order"] = (
+        ranked.loc[ranked["formal_shortlist_selected"], "candidate_id"].astype(str).map(order_map)
+    )
+    ranked["formal_shortlist_rule"] = (
+        "Pareto_rank_1_then_robust_q05_q95_utopia_distance_then_AD_distance_"
+        "then_cation_support_desc_then_anion_support_desc_then_identity_key"
+    )
+    final = ranked[ranked["formal_shortlist_selected"]].sort_values(
+        "formal_shortlist_order", kind="mergesort"
+    )
     return ranked.reset_index(drop=True), final.reset_index(drop=True)

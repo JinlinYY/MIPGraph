@@ -13,13 +13,12 @@ SCENARIO = {
     "electrode_area_cm2": 100.0,
     "separator_thickness_um": 100.0,
     "electrolyte_volume_mL": 1.0,
-    "nominal_capacitance_F": 10.0,
     "charge_discharge_current_A": 2.0,
     "convective_heat_transfer_coefficient_W_m2_K": 10.0,
     "exposed_face_count": 2,
     "transient_duration_s": 10.1,
     "reference_temperature_K": 298.15,
-    "risk_reference_quantiles": [0.75, 0.95],
+    "exceedance_reference_quantiles": [0.75, 0.95],
 }
 
 
@@ -55,9 +54,18 @@ def test_reference_cell_metrics_follow_the_declared_lumped_model() -> None:
 
     assert result["electrolyte_resistance_ohm"] == pytest.approx(0.01)
     assert result["relative_electrolyte_resistance"] == pytest.approx(1.0)
-    assert result["electrolyte_RC_time_constant_s"] == pytest.approx(0.1)
     assert result["joule_heating_power_W"] == pytest.approx(0.04)
     assert result["thermal_resistance_K_per_W"] == pytest.approx(5.05)
+    assert result["thermal_resistance_conduction_fraction"] == pytest.approx(
+        0.05 / 5.05
+    )
+    assert result["thermal_resistance_convection_fraction"] == pytest.approx(
+        5.0 / 5.05
+    )
+    assert (
+        result["thermal_resistance_conduction_fraction"]
+        + result["thermal_resistance_convection_fraction"]
+    ) == pytest.approx(1.0)
     assert result["electrolyte_thermal_capacitance_J_per_K"] == pytest.approx(2.0)
     assert result["lumped_thermal_time_constant_s"] == pytest.approx(10.1)
     assert result["steady_state_temperature_rise_K"] == pytest.approx(0.202)
@@ -96,9 +104,9 @@ def test_reference_cell_summary_reports_retention_and_worst_temperature() -> Non
     assert candidate["high_temperature_resistance_retention_pct"] == pytest.approx(50.0)
     assert candidate["low_temperature_conductivity_retention_pct"] == pytest.approx(50.0)
     assert candidate["high_temperature_conductivity_retention_pct"] == pytest.approx(200.0)
-    assert candidate["reference_cell_worst_temperature_K"] == pytest.approx(278.15)
-    assert candidate["reference_cell_risk_band_worst"] == "beyond_reference_tail"
-    assert low_row["reference_cell_risk_reason"] == "electrical;thermal"
+    assert candidate["reference_cell_exceedance_index_worst_temperature_K"] == pytest.approx(278.15)
+    assert candidate["reference_cell_exceedance_band_worst"] == "beyond_reference_tail"
+    assert low_row["reference_cell_exceedance_component"] == "electrical;thermal"
 
 
 def test_reference_cell_rejects_nonphysical_scenario_parameters() -> None:
@@ -110,7 +118,7 @@ def test_reference_cell_rejects_nonphysical_scenario_parameters() -> None:
         )
 
 
-def test_reference_cell_requires_integer_face_count_and_declared_risk_quantiles() -> None:
+def test_reference_cell_requires_integer_face_count_and_declared_exceedance_quantiles() -> None:
     with pytest.raises(ValueError, match="exposed_face_count must be an integer"):
         simulate_reference_cell_scenario(
             pd.DataFrame([_row("R1", "observed_reference", 298.15, 1.0)]),
@@ -119,7 +127,7 @@ def test_reference_cell_requires_integer_face_count_and_declared_risk_quantiles(
     with pytest.raises(ValueError, match=r"exactly \[0.75, 0.95\]"):
         simulate_reference_cell_scenario(
             pd.DataFrame([_row("R1", "observed_reference", 298.15, 1.0)]),
-            dict(SCENARIO, risk_reference_quantiles=[0.8, 0.9]),
+            dict(SCENARIO, exceedance_reference_quantiles=[0.8, 0.9]),
         )
 
 
@@ -147,7 +155,7 @@ def test_extended_sensitivity_rows_do_not_change_primary_summary() -> None:
     assert candidate["high_temperature_K"] == pytest.approx(298.15)
 
 
-def test_numeric_worst_risk_and_worst_band_are_reported_independently() -> None:
+def test_numeric_worst_exceedance_and_worst_band_are_reported_independently() -> None:
     rows: list[dict[str, object]] = []
     for temperature, reference_resistances, unseen_resistance in [
         (298.15, [1.0, 1.0, 1.0, 100.0], 50.0),
@@ -173,15 +181,14 @@ def test_numeric_worst_risk_and_worst_band_are_reported_independently() -> None:
     _, summary, _ = simulate_reference_cell_scenario(pd.DataFrame(rows), SCENARIO)
     candidate = summary.loc[summary["candidate_id"].eq("U")].iloc[0]
 
-    assert candidate["reference_cell_risk_index_worst"] == pytest.approx(
+    assert candidate["reference_cell_exceedance_index_worst"] == pytest.approx(
         50.0 / 25.75
     )
-    assert candidate["reference_cell_worst_temperature_K"] == pytest.approx(298.15)
-    assert candidate["reference_cell_risk_index_worst_temperature_K"] == pytest.approx(
+    assert candidate["reference_cell_exceedance_index_worst_temperature_K"] == pytest.approx(
         298.15
     )
-    assert candidate["reference_cell_risk_band_worst"] == "beyond_reference_tail"
-    assert candidate["reference_cell_risk_band_worst_temperature_K"] == pytest.approx(
+    assert candidate["reference_cell_exceedance_band_worst"] == "beyond_reference_tail"
+    assert candidate["reference_cell_exceedance_band_worst_temperature_K"] == pytest.approx(
         318.15
     )
-    assert candidate["reference_cell_risk_index_at_band_worst"] == pytest.approx(1.5)
+    assert candidate["reference_cell_exceedance_index_at_band_worst"] == pytest.approx(1.5)

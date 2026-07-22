@@ -1,0 +1,2 @@
+bootstrap_replicates,random_seed,reference_candidate_count,top8_jaccard_median,top8_jaccard_95pct_lower,top8_jaccard_95pct_upper,hard_feasible_count_median,pareto_rank_1_count_median,formal_shortlist_count_median
+500,42,30,0.3333333333333333,0.06666666666666667,1.0,27.0,11.0,8.0

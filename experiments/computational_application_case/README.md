@@ -88,17 +88,16 @@ z_x=\frac{\log_{10}x-\operatorname{median}(\log_{10}x_\mathrm{ref})}
 \quad f_\mathrm{transport}=z_\sigma-z_\eta.
 \]
 
-Surface tension is used only as an **interfacial-property-window proxy**. Deviation is zero inside the configured observed-reference quantile window and equals distance outside the window divided by its IQR. It is not a contact-angle model and does not establish electrode wetting or an electrochemical stability window.
+Surface tension is used only through a **surface-tension reference-envelope constraint**. \(D_{\gamma,\mathrm{ref}}\) is zero inside the configured observed-reference quantile envelope and equals the distance outside that envelope divided by its IQR. It is not a contact-angle, wetting, or interfacial-compatibility prediction and does not establish an electrochemical stability window.
 
-## 7. Conditional reference-cell scenario
+## 7. Post hoc 60-s constant-current thermal stress scenario
 
-The application now maps the temperature-resolved thermophysical predictions into one explicit comparison geometry. The default fixed assumptions are 100 cm2 electrode area, 100 micrometre separator thickness, 1 mL electrolyte, 10 F nominal capacitance, 2 A constant current, two exposed faces, 10 W m-2 K-1 convection, and a 60 s transient horizon. These values define a normalized scenario; they are not claimed to be an industry standard or a measured cell.
+Only after the formal shortlist is fixed, the application maps the temperature-resolved thermophysical predictions into one explicit comparison geometry. The fixed assumptions are 100 cm2 electrode area, 100 micrometre separator thickness, 1 mL electrolyte, 2 A constant current, two exposed faces, 10 W m-2 K-1 convection, and a 60 s pulse. These values define a conditional comparison scenario; they are not claimed to be an industry standard or a measured cell.
 
-For conductivity \(\sigma\), separator thickness \(L\), electrode area \(A\), current \(I\), and imposed capacitance \(C\):
+For conductivity \(\sigma\), separator thickness \(L\), electrode area \(A\), and current \(I\):
 
 \[
 R_\mathrm{elyte}=L/(\sigma A),
-\quad \tau_\mathrm{RC}=R_\mathrm{elyte}C,
 \quad P_\mathrm{Joule}=I^2R_\mathrm{elyte}.
 \]
 
@@ -109,21 +108,30 @@ The thermal model uses a series electrolyte-conduction and external-convection r
 \left[1-\exp\left(-t/(R_\mathrm{th}C_\mathrm{th})\right)\right].
 \]
 
-Every candidate receives absolute and reference-temperature-normalized resistance, electrolyte-only RC contribution, Joule power, steady and transient temperature rise, explicit low/high-temperature resistance retention, the corresponding conductivity retention, and a worst-temperature comparative risk. Risk bands are calibrated at each temperature from observed-reference q75/q95 resistance and transient-rise distributions. The maximum numeric q75-relative index and the most severe categorical q95-tail band are stored with their own temperatures because they need not occur at the same condition. These are prioritization measures, not thermal-safety thresholds.
+Every candidate receives absolute and reference-temperature-normalized resistance, Joule power, steady and 60-s transient temperature rise, explicit endpoint resistance ratios, and the corresponding conductivity ratios. The primary-window reference-population exceedance index is
 
-The model does not include electrode/contact resistance, current collectors, packaging, leakage, reaction heat, electrochemical stability, or a predicted capacitance. Liquid phase is conditionally assumed throughout the configured window and must be established independently.
+\[
+\Xi_{\max}=\max_{T\in[298.15,353.15]}\max\left[
+\frac{R_\mathrm{elyte}(T)}{q_{75}^{\mathrm{ref}}[R_\mathrm{elyte}(T)]},
+\frac{\Delta T_{60}(T)}{q_{75}^{\mathrm{ref}}[\Delta T_{60}(T)]}
+\right].
+\]
+
+It has no fitted weights. It records only the worst component exceedance relative to the temperature-matched observed-reference q75; it is not a thermal-runaway, safety, failure, or lifetime risk index. Joule-power and steady-state curves are retained in SI because they are derivative or nearly redundant under the fixed scenario.
+
+The model does not include electrode/contact resistance, current collectors, packaging, leakage, reaction heat, electrochemical stability, capacitance, or device performance. Liquid phase is conditionally assumed throughout the configured window and must be established independently.
 
 ## 8. Full-window robust metrics and curve audit
 
 Hard decisions use all configured temperatures, never a favorable single point:
 
 - minimum conductivity, transport favorability, volumetric heat capacity, and thermal diffusivity;
-- maximum viscosity, simplified diffusion timescale, and interfacial-window deviation;
+- maximum viscosity, simplified diffusion timescale, and surface-tension reference-envelope deviation;
 - density range, per-metric mean, temperature slope, relative change, and coefficient of variation.
 
 Every property curve is checked for non-finite and non-positive values, excursions beyond benchmark property ranges, benchmark-temperature extrapolation, and adjacent jumps above an observed-reference quantile. Severe failures can be excluded; warnings remain in the trace.
 
-The primary robust summary and every screening/Pareto decision use only the configured main window (278.15–373.15 K, or 5–100 degrees Celsius, by default). This is a modeled comparison window, not evidence that every candidate remains liquid across it. If `run_extended_sensitivity` is enabled, additional configured rows are tagged `extended_sensitivity`, audited, and retained separately; they do not alter the primary thresholds or ranks.
+The primary robust summary and every screening/Pareto decision use only the configured 298.15--353.15 K main window. The outer-grid rows are tagged `extended_sensitivity`; intermediate outer-grid values are retained only for curve-continuity auditing, while the main text reports 278.15 and 373.15 K as the two open-ended stress-test endpoints. No outer-grid row alters primary thresholds or ranks or establishes that a candidate remains liquid there.
 
 ## 9. Applicability domain
 
@@ -131,9 +139,9 @@ The descriptor AD uses the current 56 global and 80 functional-group descriptors
 
 Embedding AD is reported as unavailable because no complete reference embedding bank generated by the identical checkpoint/preprocessing path exists. The code does not substitute descriptor distances or random values under an embedding label.
 
-## 10. Uncertainty mode
+## 10. Cross-protocol decision stability
 
-The default checkpoint is a single deterministic point-prediction model. Without at least three explicitly configured compatible checkpoints or held-out residual calibration, property intervals, proxy intervals, feasibility probabilities, and Pareto probabilities are marked `not_available`. With three or more paths, the pipeline runs every member, verifies complete member coverage, saves per-checkpoint rows, computes physical-unit property and proxy means/standard deviations, and propagates every member through frozen thresholds, curve checks, hard constraints, and Pareto sorting.
+The formal application result uses one deterministic random-IL checkpoint. The property-balanced IL and ion-family checkpoints are run independently on the frozen primary candidate space, main temperature window, primary-model property thresholds, and four Pareto objectives. Applicability-domain status is recomputed from the training split aligned with each checkpoint. No checkpoint average, posterior probability, calibration interval, or ensemble uncertainty is used for the formal shortlist.
 
 ## 11. Frozen screening thresholds
 
@@ -143,18 +151,20 @@ Before inspecting unseen-candidate ranks, observed-reference whole-window summar
 - viscosity maximum: reference q75;
 - volumetric heat-capacity minimum: reference q25;
 - thermal-diffusivity minimum: reference q25;
-- interfacial-window deviation maximum: 1 reference IQR.
+- surface-tension reference-envelope deviation maximum: 1 reference IQR.
 
 Separate gates enforce valid 1:1 charge, complete finite inference, no severe curve failures, allowed AD status, and every thermophysical threshold. The frozen numerical thresholds and every pass/fail bit are persisted.
 
 ## 12. Pareto objectives and recommendation classes
 
-Non-dominated sorting maximizes worst-window conductivity, volumetric heat capacity, and thermal diffusivity while minimizing worst-window viscosity, interfacial deviation, and conditional reference-cell risk. Utopia distance orders otherwise transparent trade-offs.
+Non-dominated sorting uses exactly four objectives: it maximizes worst-window conductivity, volumetric heat capacity, and thermal diffusivity while minimizing worst-window viscosity. The surface-tension reference envelope, applicability domain, and curve quality are hard constraints. Reference-cell resistance, temperature rise, and \(\Xi_{\max}\) are post hoc engineering-context statistics and do not enter hard screening, Pareto sorting, Top-8 selection, or qualification-role selection. Pareto-rank-1 candidates are robust-normalized with clipped q05--q95 scaling, then ordered deterministically by Euclidean distance to the four-objective utopia point with candidate ID as the final tie-breaker.
 
-- `balanced`: in-domain Pareto-rank-1 lead nearest the normalized utopia point;
-- `high_transport`: transport-side normalized score dominates the thermal-side score;
-- `thermal_robust`: thermal-side normalized score dominates the transport-side score;
-- `exploratory`: a hard-feasible borderline-AD lead requiring AD-focused qualification.
+- `balanced lead`: in-domain candidate nearest the four-objective utopia point;
+- `transport-focused lead`: candidate nearest the two-objective conductivity--viscosity utopia point;
+- `thermal-management lead`: candidate nearest the two-objective volumetric-heat-capacity--thermal-diffusivity utopia point;
+- `cross-protocol robust lead`: candidate passing the hard constraints or reaching Pareto rank one in both primary and balanced protocols, with the smallest absolute protocol-order change.
+
+If a role has no eligible candidate, the role is left unassigned. Different roles may select the same candidate; alternatives are not inserted manually.
 
 An out-of-domain pair cannot enter the default final set. If no pair passes, the correct result is an empty candidate table—not relaxed thresholds.
 
@@ -185,26 +195,20 @@ The default YAML contains the audited checkpoint explicitly. Override it only wi
 python experiments\computational_application_case\run_all.py --config ... --checkpoint path\to\checkpoint.pt
 ```
 
-For an actual ensemble, pass at least three structurally compatible six-output checkpoints. They must share property order and preprocessing semantics:
-
-```powershell
-python experiments\computational_application_case\run_all.py --config ... `
-  --checkpoints member1.pt member2.pt member3.pt
-```
-
-The primary screening prediction is the physical-unit ensemble mean. Incomplete candidate-condition member sets are excluded from that mean and fail the complete-window gate.
+Do not pass the three split-protocol checkpoints through `--checkpoints` for this application: they represent different evaluation protocols and must not be averaged into a formal prediction.
 
 ## 14. Outputs and Figures 5–6 reproduction
 
 `outputs/data/` contains candidate libraries, raw predictions, proxies, reference-cell temperature/summary tables, robust summaries, AD, screening, Pareto, and counterfactual tables. `outputs/audit/` contains units, inference, conditional-cell equations/assumptions, AD, and uncertainty metadata. `outputs/steps/` contains resumable markers. `outputs/tables/` contains CSV and directly reusable LaTeX tables. `outputs/report/` contains Markdown, LaTeX, JSON, and blocking reports. Large runtime files are ignored by Git.
 
-Figure 5 is generated solely from persisted screening outputs. Figure 6 separately shows the fixed cell assumptions, resistance, RC contribution, Joule power, steady/transient temperature rise, high/low-temperature retention, and worst-temperature comparative risk. The full config writes 600-dpi PNG and vector PDF files plus individual panels. Reproduce only the figures after a successful pipeline with:
+Figure 5 contains the identity audit, full 608-candidate funnel, constraint margins, reference-bootstrap selection frequencies, protocol sensitivity, and automatically assigned qualification roles. Figure 6 begins only after the formal shortlist has been fixed and reports the 60-s scenario, resistance, the volumetric-heat-capacity--thermal-diffusivity map, conditional temperature rise, endpoint transport trade-off, and reference-population exceedance context. Joule-power and steady-state temperature-rise curves are generated only for the Supporting Information. The builder writes separate 600-dpi PNG and vector PDF files plus machine-readable source data. After a successful primary pipeline, first build the two independently audited protocol-sensitivity outputs on the frozen primary candidate identities and then reproduce the figures and 500-replicate bootstrap:
 
 ```powershell
-python experiments\computational_application_case\scripts\make_figures.py `
-  --config experiments\computational_application_case\configs\default.yaml `
-  --force
+python experiments\computational_application_case\scripts\build_protocol_stability_outputs.py --force
+python experiments\computational_application_case\scripts\build_refactored_application_case.py
 ```
+
+The first command runs each sensitivity checkpoint separately, aligns its applicability domain to its own training split, verifies the candidate ID--InChI mapping and temperature coverage, and records checkpoint and candidate-identity SHA-256 digests. The figure builder then reads only those verified CSV/JSON outputs and never averages predictions.
 
 ## 15. Common failures
 
@@ -218,3 +222,57 @@ python experiments\computational_application_case\scripts\make_figures.py `
 ## 16. Required downstream evidence
 
 Before any material or device claim, follow-up work must determine synthesis and purification feasibility, water content, melting/glass-transition behavior and liquid range, thermal stability, ion size–pore matching, electrode-specific wetting/contact behavior, electrochemical stability, conductivity and viscosity by independent measurement, capacitance and impedance, rate capability, self-discharge, cycling stability, cell packaging, and safety. Family-level extrapolation and the sparse thermal-conductivity label coverage should be treated as explicit risk factors when selecting those measurements.
+
+## 17. Auditable bilingual chapter rerun
+
+The application-facing rerun uses resonance-invariant, ion-level Standard
+InChIKeys for chemical identity control. The random-IL whole-ion-holdout
+checkpoint is the sole primary model for formal candidate values and
+decisions. The balanced-IL and ion-family checkpoints are evaluated
+independently for cross-protocol decision stability and are never averaged.
+Run the primary calculation and evidence builder from the project root with:
+
+```powershell
+E:\anaconda\envs\ggnn39\python.exe experiments\computational_application_case\run_all.py `
+  --config experiments\computational_application_case\configs\auditable_virtual_screening.yaml `
+  --force --skip-figures --skip-report
+E:\anaconda\envs\ggnn39\python.exe `
+  experiments\computational_application_case\scripts\build_protocol_stability_outputs.py --force
+E:\anaconda\envs\ggnn39\python.exe `
+  experiments\computational_application_case\scripts\build_refactored_application_case.py
+```
+
+The first command writes the formal single-checkpoint result tree under
+`outputs_primary_audited/`. The second command independently evaluates the two
+sensitivity checkpoints on the frozen primary candidate identities and writes
+checkpoint, split, identity, and temperature-coverage manifests. The third
+command applies the frozen primary property thresholds, performs the 81-setting
+threshold sensitivity analysis, generates the application-only Figures 5 and 6
+plus the SI figures, and stages their source data for the bilingual chapter; it
+does not update Figure 3 or other preceding manuscript results. Run
+`scripts/package_chapter_artifacts.py` to refresh the application-only
+`chapter_results/` release bundle. Compile the main manuscript with
+XeLaTeX:
+
+The evidence builder directly audits all 649 entries in the old SMILES-novel
+pool instead of inferring identity corrections from before/after pool sizes.
+It also removes the one Standard-InChI train--test identity overlap found in
+each of the random-IL and property-balanced IL evaluations and estimates
+temperature-trend agreement only from records with finite pressures of
+90--110 kPa.  Evaluation rows with unresolved chemical identity or missing
+pressure for the curve analysis are handled fail-closed.  These exclusions are
+written to auditable CSV files.  The released checkpoints predate this audit,
+so unresolved training rows remain a disclosed limitation unless the models
+are retrained from newly identity-grouped splits.
+
+```powershell
+cd LaTex-MIPGraph
+latexmk -xelatex -interaction=nonstopmode -halt-on-error acs-latex-template.tex
+```
+
+The three models differ by split protocol rather than by random seed. Their
+categorical hard-pass, Pareto-rank, and top-eight decisions quantify protocol
+sensitivity; they are not ensemble uncertainty, calibrated posterior
+probabilities, or formal prediction intervals. The formal screening window is
+298.15--353.15 K. Predictions at 278.15 and 373.15 K are stress-test endpoints
+only and do not enter hard screening or Pareto sorting.

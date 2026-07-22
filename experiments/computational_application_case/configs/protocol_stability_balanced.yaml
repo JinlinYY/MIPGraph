@@ -1,0 +1,15 @@
+extends: auditable_virtual_screening.yaml
+
+# Sensitivity-only model trained with the property-balanced whole-IL split.
+# Its outputs must not replace or be averaged with the primary checkpoint.
+model:
+  checkpoint_path: trained_weights/mipgraph_best/weights/split_strategy_comparison_seed42/checkpoints/il_level_property_balanced_seed42/best_model.pt
+  checkpoint_paths: []
+  device: cuda
+
+data:
+  split_path: il_property_prediction/data/processed/splits/il_level_property_balanced_seed42.json
+  training_split_name: train
+
+outputs:
+  output_dir: experiments/computational_application_case/outputs_protocol_balanced

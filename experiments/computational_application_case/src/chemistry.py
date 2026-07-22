@@ -25,6 +25,8 @@ class ParsedIonPair:
     anion_smiles: str
     canonical_cation_smiles: str
     canonical_anion_smiles: str
+    cation_identity_key: str
+    anion_identity_key: str
     canonical_il_key: str
     cation_charge: int
     anion_charge: int
@@ -47,6 +49,7 @@ class CandidateGenerationSettings:
     max_anions: int
     max_candidates: int
     max_observed_references: int
+    stable_id_anchor_count: int = 0
     require_monovalent_1to1: bool = True
     exclude_observed_pairs: bool = True
     descriptor_prefilter_multiplier: int = 5
@@ -70,6 +73,18 @@ def _canonical_or_raise(smiles: str, role: str) -> str:
     if canonical is None:
         raise ValueError(f"Could not canonicalize {role}: {error}")
     return canonical
+
+
+def _identity_key_or_raise(molecule: Chem.Mol, role: str) -> str:
+    """Return a resonance-invariant, charge-aware Standard InChIKey."""
+
+    try:
+        key = str(Chem.MolToInchiKey(molecule)).strip()
+    except Exception as exc:  # pragma: no cover - RDKit provides the detail
+        raise ValueError(f"Could not derive Standard InChIKey for {role}: {exc}") from exc
+    if not key:
+        raise ValueError(f"Could not derive Standard InChIKey for {role}")
+    return key
 
 
 def parse_monovalent_pair(
@@ -99,12 +114,16 @@ def parse_monovalent_pair(
         )
     canonical_cation = _canonical_or_raise(parts.cation_smiles, "cation")
     canonical_anion = _canonical_or_raise(parts.anion_smiles, "anion")
+    cation_identity = _identity_key_or_raise(cation, "cation")
+    anion_identity = _identity_key_or_raise(anion, "anion")
     return ParsedIonPair(
         cation_smiles=str(parts.cation_smiles),
         anion_smiles=str(parts.anion_smiles),
         canonical_cation_smiles=canonical_cation,
         canonical_anion_smiles=canonical_anion,
-        canonical_il_key=f"{canonical_cation}||{canonical_anion}",
+        cation_identity_key=cation_identity,
+        anion_identity_key=anion_identity,
+        canonical_il_key=f"{cation_identity}||{anion_identity}",
         cation_charge=cation_charge,
         anion_charge=anion_charge,
         warnings=tuple(parts.warnings),
@@ -207,19 +226,21 @@ def _library(
     support: pd.Series,
 ) -> pd.DataFrame:
     canonical_column = f"canonical_{role}_smiles"
+    identity_column = f"{role}_identity_key"
     source_column = f"{role}_smiles"
     charge_column = f"{role}_charge"
     representatives = (
-        unique_pairs.sort_values([canonical_column, source_column])
-        .drop_duplicates(canonical_column)
-        .set_index(canonical_column)
+        unique_pairs.sort_values([identity_column, canonical_column, source_column])
+        .drop_duplicates(identity_column)
+        .set_index(identity_column)
     )
     rows = []
-    for canonical, count in support.items():
-        representative = representatives.loc[canonical]
+    for identity, count in support.items():
+        representative = representatives.loc[identity]
         rows.append(
             {
-                f"canonical_{role}_smiles": canonical,
+                f"canonical_{role}_smiles": representative[canonical_column],
+                identity_column: identity,
                 f"{role}_smiles": representative[source_column],
                 f"{role}_charge": int(representative[charge_column]),
                 f"{role}_support_count": int(count),
@@ -230,7 +251,7 @@ def _library(
     if output.empty:
         return output
     return output.sort_values(
-        [f"{role}_support_count", canonical_column], ascending=[False, True]
+        [f"{role}_support_count", identity_column], ascending=[False, True]
     ).reset_index(drop=True)
 
 
@@ -315,8 +336,8 @@ def build_candidate_tables(
     training_pairs = parsed[parsed["row_position"].isin(training_positions)].drop_duplicates(
         "canonical_il_key"
     )
-    cation_support = training_pairs.groupby("canonical_cation_smiles").size()
-    anion_support = training_pairs.groupby("canonical_anion_smiles").size()
+    cation_support = training_pairs.groupby("cation_identity_key").size()
+    anion_support = training_pairs.groupby("anion_identity_key").size()
     cations = _library(unique_pairs, "cation", cation_support)
     anions = _library(unique_pairs, "anion", anion_support)
     cations = cations[
@@ -331,7 +352,7 @@ def build_candidate_tables(
     rejected_observed = 0
     for cation in cations.itertuples(index=False):
         for anion in anions.itertuples(index=False):
-            key = f"{cation.canonical_cation_smiles}||{anion.canonical_anion_smiles}"
+            key = f"{cation.cation_identity_key}||{anion.anion_identity_key}"
             seen_benchmark = key in observed_keys
             if settings.exclude_observed_pairs and seen_benchmark:
                 rejected_observed += 1
@@ -343,6 +364,8 @@ def build_candidate_tables(
                     "il_smiles": f"{cation.cation_smiles}.{anion.anion_smiles}",
                     "canonical_cation_smiles": cation.canonical_cation_smiles,
                     "canonical_anion_smiles": anion.canonical_anion_smiles,
+                    "cation_identity_key": cation.cation_identity_key,
+                    "anion_identity_key": anion.anion_identity_key,
                     "canonical_il_key": key,
                     "candidate_type": "unseen_pair_recombination",
                     "cation_charge": int(cation.cation_charge),
@@ -362,15 +385,30 @@ def build_candidate_tables(
                 }
             )
     candidate_pool = pd.DataFrame(generated)
-    selected = (
-        _deterministic_descriptor_selection(
+    if candidate_pool.empty:
+        selected = candidate_pool.copy()
+    elif len(candidate_pool) > settings.max_candidates:
+        selected = _deterministic_descriptor_selection(
             candidate_pool,
             settings.max_candidates,
             settings.descriptor_prefilter_multiplier,
         )
-        if not candidate_pool.empty
-        else candidate_pool.copy()
-    )
+    elif 0 < settings.stable_id_anchor_count < len(candidate_pool):
+        # ID continuity only: retain the former deterministic 600-candidate
+        # ordering, then append every previously unevaluated identity in a
+        # canonical-key order that is independent of predicted properties.
+        anchor = _deterministic_descriptor_selection(
+            candidate_pool,
+            settings.stable_id_anchor_count,
+            settings.descriptor_prefilter_multiplier,
+        )
+        anchor_keys = set(anchor["canonical_il_key"].astype(str))
+        remainder = candidate_pool[
+            ~candidate_pool["canonical_il_key"].astype(str).isin(anchor_keys)
+        ].sort_values("canonical_il_key", kind="mergesort")
+        selected = pd.concat([anchor, remainder], ignore_index=True)
+    else:
+        selected = candidate_pool.copy()
     if not selected.empty:
         selected.insert(
             0,
@@ -381,10 +419,10 @@ def build_candidate_tables(
     observed["candidate_type"] = "observed_reference"
     observed["pair_seen_in_benchmark"] = True
     observed["pair_seen_in_training"] = observed["canonical_il_key"].isin(training_keys)
-    observed["cation_support_count"] = observed["canonical_cation_smiles"].map(
+    observed["cation_support_count"] = observed["cation_identity_key"].map(
         cation_support
     ).fillna(0).astype(int)
-    observed["anion_support_count"] = observed["canonical_anion_smiles"].map(
+    observed["anion_support_count"] = observed["anion_identity_key"].map(
         anion_support
     ).fillna(0).astype(int)
     observed["cation_family"] = observed["cation_smiles"].map(
@@ -433,7 +471,11 @@ def build_candidate_tables(
                 "input_count": len(candidate_pool),
                 "retained_count": len(selected),
                 "removed_count": len(candidate_pool) - len(selected),
-                "removal_reason": "deterministic_max_candidates",
+                "removal_reason": (
+                    "deterministic_max_candidates"
+                    if len(candidate_pool) > len(selected)
+                    else "none_all_identity_novel_candidates_evaluated"
+                ),
             },
         ]
     )

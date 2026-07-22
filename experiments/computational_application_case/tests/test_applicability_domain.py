@@ -10,6 +10,11 @@ from experiments.computational_application_case.src.applicability_domain import 
     fit_descriptor_ad,
     score_descriptor_ad,
 )
+from experiments.computational_application_case.src.chemistry import (
+    ion_family,
+    parse_monovalent_pair,
+)
+from experiments.computational_application_case.src.pipeline import CasePipeline
 
 
 def test_standard_scaler_is_fit_only_on_reference_rows() -> None:
@@ -105,3 +110,54 @@ def test_low_ion_family_support_downgrades_in_domain_candidate() -> None:
     )
     assert output.loc[0, "AD_status"] == "borderline"
     assert "low_ion_family_support" in output.loc[0, "AD_reason"]
+
+
+def test_ad_metadata_recomputes_pair_and_ion_support_from_active_split() -> None:
+    chloride = "C[N+](C)(C)C.[Cl-]"
+    bromide = "C[N+](C)(C)C.[Br-]"
+    parsed_chloride = parse_monovalent_pair(chloride)
+    benchmark = pd.DataFrame(
+        {
+            "IL_SMILES": [chloride, chloride, bromide],
+            "Temperature_K": [298.15, 303.15, 308.15],
+            **{
+                f"{name}_ActualValue": [1.0, 1.0, 1.0]
+                for name in [
+                    "Density",
+                    "ElectricalConductivity",
+                    "HeatCapacity",
+                    "SurfaceTension",
+                    "ThermalConductivity",
+                    "Viscosity",
+                ]
+            },
+        }
+    )
+    candidates = pd.DataFrame(
+        {
+            "candidate_id": ["A"],
+            "candidate_type": ["unseen_pair_recombination"],
+            "cation_identity_key": [parsed_chloride.cation_identity_key],
+            "anion_identity_key": [parsed_chloride.anion_identity_key],
+            "cation_family": [ion_family(parsed_chloride.cation_smiles, "cation")],
+            "anion_family": [ion_family(parsed_chloride.anion_smiles, "anion")],
+            "pair_seen_in_training": [False],
+            "cation_support_count": [999],
+            "anion_support_count": [999],
+        }
+    )
+    pipeline = object.__new__(CasePipeline)
+    pipeline.config = {
+        "data": {"training_split_name": "train"},
+        "conditions": {
+            "temperature_start_K": 298.15,
+            "temperature_end_K": 308.15,
+            "temperature_step_K": 5.0,
+        },
+    }
+    pipeline._benchmark = lambda: benchmark
+    pipeline._split = lambda: {"train": [0, 1, 2]}
+    metadata = pipeline._ad_metadata(candidates)
+    assert bool(metadata.loc[0, "pair_seen"]) is True
+    assert metadata.loc[0, "cation_support_count"] == 2
+    assert metadata.loc[0, "anion_support_count"] == 1

@@ -1,0 +1,9 @@
+generation,candidate_id,il_smiles,chemical_identity_key,identity_status,matched_benchmark_IL_names,identity_error
+InChI_audited_shortlist,UPR-0581,CCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,LSFWFJFDPRFPBK-UHFFFAOYSA-N||KDCFMDHINPOTEA-UHFFFAOYSA-N,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0209,CCCCCC[n+]1ccccc1.N#C[C-](C#N)C#N,AMKUSFIBHAUBIJ-UHFFFAOYSA-N||CXERBOODJDWFQL-UHFFFAOYSA-N,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0024,CC[N+](C)(C)CCOC.N#C[B-](C#N)(C#N)C#N,KIJWMNYEVKNAGY-UHFFFAOYSA-N||KDCFMDHINPOTEA-UHFFFAOYSA-N,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0393,CCCC[n+]1ccn(C)c1C.N#C[B-](C#N)(C#N)C#N,XUAXVBUVQVRIIQ-UHFFFAOYSA-N||KDCFMDHINPOTEA-UHFFFAOYSA-N,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0343,CN1C=[N+](C=C1)C.CCC(=O)[O-],HVVRUQBMAZRKPJ-UHFFFAOYSA-N||XBDQKXXYIPTUBI-UHFFFAOYSA-M,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0550,CCCC[n+]1ccn(CC)c1.N#C[B-](C#N)(C#N)C#N,JYARJXBHOOZQQD-UHFFFAOYSA-N||KDCFMDHINPOTEA-UHFFFAOYSA-N,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0419,CN1C=[NH+]C=C1.CCC(=O)[O-],MCTWTZJPVLRJOU-UHFFFAOYSA-O||XBDQKXXYIPTUBI-UHFFFAOYSA-M,genuinely_unseen_pair,,
+InChI_audited_shortlist,UPR-0558,CCC[n+]1ccn(C)c1.O=C([O-])C(F)(F)F,WVDDUSFOSWWJJH-UHFFFAOYSA-N||DTQVDTLACAAQTR-UHFFFAOYSA-M,genuinely_unseen_pair,,

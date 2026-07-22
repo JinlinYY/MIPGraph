@@ -18,14 +18,13 @@ PROXY_UNCERTAINTY_COLUMNS = [
     "simplified_thermal_diffusion_timescale",
     "electrolyte_mass_kg",
     "transport_favorability",
-    "interfacial_window_deviation",
+    "surface_tension_reference_envelope_deviation",
     "thermal_effusivity",
     "electrolyte_resistance_ohm",
-    "electrolyte_RC_time_constant_s",
     "joule_heating_power_W",
     "steady_state_temperature_rise_K",
     "transient_temperature_rise_K",
-    "reference_cell_risk_index",
+    "reference_cell_exceedance_index",
 ]
 
 ENSEMBLE_COMPATIBILITY_FIELDS = (

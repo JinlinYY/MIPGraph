@@ -436,6 +436,7 @@ class CasePipeline:
             max_anions=int(cfg["max_anions"]),
             max_candidates=int(cfg["max_candidates"]),
             max_observed_references=int(cfg["max_observed_references"]),
+            stable_id_anchor_count=int(cfg.get("stable_id_anchor_count", 0)),
             require_monovalent_1to1=bool(cfg["require_monovalent_1to1"]),
             exclude_observed_pairs=bool(cfg["exclude_observed_pairs"]),
             descriptor_prefilter_multiplier=int(cfg["descriptor_prefilter_multiplier"]),
@@ -712,7 +713,7 @@ class CasePipeline:
             "z_conductivity",
             "z_viscosity",
             "transport_favorability",
-            "interfacial_window_deviation",
+            "surface_tension_reference_envelope_deviation",
             "thermal_effusivity",
         ]
         wide = proxies.pivot(
@@ -775,10 +776,10 @@ class CasePipeline:
                 "candidate_condition_rows": int(len(metrics)),
                 "candidate_summary_rows": int(len(summary)),
                 "ensemble_member_rows": int(ensemble_rows),
-                "risk_band_counts": {
+                "exceedance_band_counts": {
                     str(key): int(value)
                     for key, value in summary[
-                        "reference_cell_risk_band_worst"
+                        "reference_cell_exceedance_band_worst"
                     ].value_counts().items()
                 },
             }
@@ -875,18 +876,30 @@ class CasePipeline:
             except ValueError:
                 continue
         training["_cation"] = training["IL_SMILES"].map(
-            lambda value: parsed.get(str(value)).canonical_cation_smiles if str(value) in parsed else None
+            lambda value: parsed.get(str(value)).cation_identity_key if str(value) in parsed else None
         )
         training["_anion"] = training["IL_SMILES"].map(
-            lambda value: parsed.get(str(value)).canonical_anion_smiles if str(value) in parsed else None
+            lambda value: parsed.get(str(value)).anion_identity_key if str(value) in parsed else None
         )
+        training_pairs = (
+            training.dropna(subset=["_cation", "_anion"])
+            .drop_duplicates(["_cation", "_anion"])
+            .copy()
+        )
+        training_pair_keys = set(
+            training_pairs["_cation"].astype(str)
+            + "||"
+            + training_pairs["_anion"].astype(str)
+        )
+        cation_support = training_pairs.groupby("_cation").size()
+        anion_support = training_pairs.groupby("_anion").size()
         cation_family_map = {
-            smiles: ion_family(smiles, "cation")
-            for smiles in training["_cation"].dropna().unique()
+            pair.cation_identity_key: ion_family(pair.cation_smiles, "cation")
+            for pair in parsed.values()
         }
         anion_family_map = {
-            smiles: ion_family(smiles, "anion")
-            for smiles in training["_anion"].dropna().unique()
+            pair.anion_identity_key: ion_family(pair.anion_smiles, "anion")
+            for pair in parsed.values()
         }
         training["_cation_family"] = training["_cation"].map(cation_family_map)
         training["_anion_family"] = training["_anion"].map(anion_family_map)
@@ -897,8 +910,8 @@ class CasePipeline:
         metadata_rows = []
         temperatures = temperature_grid(self.config["conditions"])
         for row in candidates.itertuples(index=False):
-            cation_rows = training[training["_cation"].eq(row.canonical_cation_smiles)]
-            anion_rows = training[training["_anion"].eq(row.canonical_anion_smiles)]
+            cation_rows = training[training["_cation"].eq(row.cation_identity_key)]
+            anion_rows = training[training["_anion"].eq(row.anion_identity_key)]
             component_min = max(
                 float(cation_rows["Temperature_K"].min()) if not cation_rows.empty else float("inf"),
                 float(anion_rows["Temperature_K"].min()) if not anion_rows.empty else float("inf"),
@@ -919,9 +932,16 @@ class CasePipeline:
                     "candidate_type": row.candidate_type,
                     "cation_seen": not cation_rows.empty,
                     "anion_seen": not anion_rows.empty,
-                    "pair_seen": bool(row.pair_seen_in_training),
-                    "cation_support_count": int(row.cation_support_count),
-                    "anion_support_count": int(row.anion_support_count),
+                    "pair_seen": (
+                        f"{row.cation_identity_key}||{row.anion_identity_key}"
+                        in training_pair_keys
+                    ),
+                    "cation_support_count": int(
+                        cation_support.get(str(row.cation_identity_key), 0)
+                    ),
+                    "anion_support_count": int(
+                        anion_support.get(str(row.anion_identity_key), 0)
+                    ),
                     "cation_family_support": int(
                         cation_family_support.get(str(row.cation_family), 0)
                     ),
@@ -955,6 +975,10 @@ class CasePipeline:
         if len(descriptor_columns) != 136:
             raise ValueError(f"Expected 136 current descriptors, found {len(descriptor_columns)}")
         reference = self._reference_descriptor_frame(descriptor_columns)
+        write_csv(
+            reference,
+            self._data_path("training_domain_descriptor_reference.csv"),
+        )
         metadata = self._ad_metadata(candidates)
         ad, model = assess_applicability_domain(
             features,
@@ -1014,11 +1038,10 @@ class CasePipeline:
             ]
             scenario_columns = [
                 "electrolyte_resistance_ohm",
-                "electrolyte_RC_time_constant_s",
                 "joule_heating_power_W",
                 "steady_state_temperature_rise_K",
                 "transient_temperature_rise_K",
-                "reference_cell_risk_index",
+                "reference_cell_exceedance_index",
             ]
             uncertainty_proxies = uncertainty_proxies.merge(
                 member_cell[keys + scenario_columns],
@@ -1092,6 +1115,22 @@ class CasePipeline:
         ranked, final = prioritize_candidates(trace, self.config["pareto"])
         write_csv(ranked, self._data_path("pareto_candidates.csv"))
         write_csv(final, self._data_path("final_prioritized_candidates.csv"))
+        rank_one_record = ranked[ranked["Pareto_rank"].eq(1)].sort_values(
+            [
+                "utopia_distance",
+                "descriptor_knn_distance",
+                "cation_support_count",
+                "anion_support_count",
+                "canonical_il_key",
+            ],
+            ascending=[True, True, False, False, True],
+            kind="mergesort",
+            na_position="last",
+        )
+        write_csv(
+            rank_one_record,
+            self._data_path("pareto_rank1_top8_selection.csv"),
+        )
         return {
             "feasible_unseen": int(len(ranked)),
             "pareto_rank_1": int(ranked["Pareto_rank"].eq(1).sum()) if not ranked.empty else 0,

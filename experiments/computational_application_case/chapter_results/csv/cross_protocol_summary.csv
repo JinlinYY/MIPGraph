@@ -1,0 +1,4 @@
+protocol,formal_primary_protocol,hard_feasible_count,pareto_rank_1_count,reported_top8_count,prediction_aggregation,property_threshold_source,applicability_domain_split
+Random-IL primary,True,26,12,8,none; independent checkpoint,formal primary reference thresholds,D:\GGNN\IL-model\Sparse-Label-Prediction\il_property_prediction\data\processed\splits\il_level_seed42.json
+Balanced-IL sensitivity,False,16,5,5,none; independent checkpoint,formal primary reference thresholds,D:\GGNN\IL-model\Sparse-Label-Prediction\il_property_prediction\data\processed\splits\il_level_property_balanced_seed42.json
+Ion-family sensitivity,False,12,1,1,none; independent checkpoint,formal primary reference thresholds,D:\GGNN\IL-model\Sparse-Label-Prediction\il_property_prediction\data\processed\splits\il_level_family_pair_seed42.json

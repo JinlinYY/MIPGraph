@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .model_adapter import PROPERTY_UNITS
+from .schema import PROPERTY_UNITS
 
 
 PANEL_FILES = {
@@ -46,9 +46,22 @@ COLORS = {
     "light": "#E8EDF3",
 }
 
+# Restrained, colour-blind-accessible palette used consistently across the
+# reference-cell schematic and all quantitative panels.
+CELL_COLORS = {
+    "blue": "#3B74A8",
+    "orange": "#D9922E",
+    "teal": "#2A8A78",
+    "charcoal": "#4C5560",
+    "light_gray": "#D9DEE3",
+    "mid_gray": "#8A939C",
+    "pale_gray": "#EEF1F3",
+    "vermillion": "#C75D43",
+}
+
 
 def _read_csv(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+    return pd.read_csv(path, low_memory=False) if path.exists() else pd.DataFrame()
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -412,11 +425,23 @@ def _renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any], None]]:
     }
 
 
-def _save(fig: mpl.figure.Figure, base: Path, formats: list[str], dpi: int) -> list[str]:
+def _save(
+    fig: mpl.figure.Figure,
+    base: Path,
+    formats: list[str],
+    dpi: int,
+    *,
+    tight: bool = True,
+) -> list[str]:
     outputs = []
     for extension in formats:
         target = base.with_suffix(f".{extension}")
-        fig.savefig(target, dpi=dpi if extension.lower() == "png" else None, bbox_inches="tight", facecolor="white")
+        fig.savefig(
+            target,
+            dpi=dpi if extension.lower() == "png" else None,
+            bbox_inches="tight" if tight else None,
+            facecolor="white",
+        )
         outputs.append(str(target))
     plt.close(fig)
     return outputs
@@ -482,41 +507,345 @@ def _reference_cell_candidates(
     return list(dict.fromkeys(selected + references))
 
 
+def _cell_axis(container: Any) -> mpl.axes.Axes:
+    """Return an existing axis or create one inside a figure/subfigure."""
+
+    return container if isinstance(container, mpl.axes.Axes) else container.subplots()
+
+
+def _cell_title(
+    ax: mpl.axes.Axes,
+    letter: str,
+    title: str,
+    *,
+    title_x: float = 0.072,
+) -> None:
+    """Nature-style panel label and compact descriptive title."""
+
+    ax.text(
+        0.0,
+        1.025,
+        letter.lower(),
+        transform=ax.transAxes,
+        fontsize=8.0,
+        fontweight="bold",
+        ha="left",
+        va="bottom",
+    )
+    ax.text(
+        title_x,
+        1.025,
+        title,
+        transform=ax.transAxes,
+        fontsize=7.0,
+        fontweight="normal",
+        ha="left",
+        va="bottom",
+    )
+
+
+def _cell_style_axis(ax: mpl.axes.Axes) -> None:
+    """Minimal journal axis styling with no decorative grid."""
+
+    ax.grid(False)
+    ax.spines[["top", "right"]].set_visible(False)
+    for spine in ("left", "bottom"):
+        ax.spines[spine].set_linewidth(0.55)
+        ax.spines[spine].set_color("black")
+    ax.tick_params(
+        axis="both",
+        which="major",
+        direction="out",
+        length=2.5,
+        width=0.5,
+        pad=1.5,
+        labelsize=5.2,
+        colors="black",
+    )
+    ax.tick_params(
+        axis="both",
+        which="minor",
+        direction="out",
+        length=1.5,
+        width=0.4,
+        colors="black",
+    )
+    ax.xaxis.label.set_size(5.5)
+    ax.yaxis.label.set_size(5.5)
+
+
+def _cell_series_style(index: int) -> dict[str, Any]:
+    colors = [
+        CELL_COLORS["blue"],
+        CELL_COLORS["orange"],
+        CELL_COLORS["teal"],
+        CELL_COLORS["charcoal"],
+    ]
+    markers = ["o", "s", "^", "D"]
+    return {
+        "color": colors[index % len(colors)],
+        "marker": markers[index % len(markers)],
+        "linestyle": "--" if index == 3 else "-",
+    }
+
+
+def _draw_reference_cell_scene(ax: mpl.axes.Axes) -> None:
+    """Draw an editable vector cutaway of the standardized symmetric cell."""
+
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_axis_off()
+
+    def layer(
+        y: float,
+        thickness: float,
+        facecolor: str,
+        edgecolor: str,
+        *,
+        alpha: float = 1.0,
+    ) -> None:
+        x0, x1, skew = 0.22, 0.72, 0.13
+        top = np.array(
+            [
+                [x0, y + thickness],
+                [x1, y + thickness],
+                [x1 + skew, y],
+                [x0 + skew, y],
+            ]
+        )
+        side = np.array(
+            [
+                [x0 + skew, y],
+                [x1 + skew, y],
+                [x1 + skew, y - 0.027],
+                [x0 + skew, y - 0.027],
+            ]
+        )
+        ax.add_patch(
+            mpl.patches.Polygon(
+                side,
+                closed=True,
+                facecolor=mpl.colors.to_rgba(edgecolor, 0.55 * alpha),
+                edgecolor=edgecolor,
+                linewidth=0.45,
+            )
+        )
+        ax.add_patch(
+            mpl.patches.Polygon(
+                top,
+                closed=True,
+                facecolor=facecolor,
+                edgecolor=edgecolor,
+                linewidth=0.6,
+                alpha=alpha,
+            )
+        )
+
+    # Exploded symmetric stack: collector / porous carbon / separator + neat IL.
+    layer(0.17, 0.055, "#D5DADF", "#7D858D")
+    layer(0.30, 0.105, "#3E4850", "#252B30")
+    layer(0.47, 0.085, "#8BCBC3", "#3F8E85", alpha=0.88)
+    layer(0.64, 0.105, "#3E4850", "#252B30")
+    layer(0.81, 0.055, "#D5DADF", "#7D858D")
+
+    # Current-collector tabs remain vector objects and use restrained accents.
+    ax.add_patch(
+        mpl.patches.Polygon(
+            [[0.08, 0.205], [0.29, 0.205], [0.33, 0.175], [0.12, 0.175]],
+            closed=True,
+            facecolor="#B97A55",
+            edgecolor="#6F4935",
+            linewidth=0.5,
+        )
+    )
+    ax.add_patch(
+        mpl.patches.Polygon(
+            [[0.72, 0.865], [0.93, 0.865], [0.97, 0.835], [0.76, 0.835]],
+            closed=True,
+            facecolor="#BFC6CC",
+            edgecolor="#6F7880",
+            linewidth=0.5,
+        )
+    )
+
+    # Ambient-temperature context and black keylines avoid coloured text.
+    ax.annotate(
+        "",
+        xy=(0.75, 0.965),
+        xytext=(0.25, 0.965),
+        arrowprops={
+            "arrowstyle": "<->",
+            "color": CELL_COLORS["charcoal"],
+            "linewidth": 0.65,
+        },
+    )
+    ax.text(
+        0.50,
+        0.965,
+        r"$T_{\rm amb}=5$--$100\ ^\circ$C",
+        fontsize=5.3,
+        ha="center",
+        va="bottom",
+        color="black",
+    )
+    labels = [
+        ("Porous carbon", (0.05, 0.69), (0.31, 0.69)),
+        ("Neat IL + separator", (0.05, 0.51), (0.31, 0.51)),
+        ("Current collector", (0.05, 0.84), (0.31, 0.84)),
+    ]
+    for text_label, text_xy, target_xy in labels:
+        ax.annotate(
+            text_label,
+            xy=target_xy,
+            xytext=text_xy,
+            textcoords="data",
+            fontsize=4.8,
+            color="black",
+            ha="left",
+            va="center",
+            arrowprops={
+                "arrowstyle": "-",
+                "color": "black",
+                "linewidth": 0.45,
+                "shrinkA": 2.0,
+                "shrinkB": 1.5,
+            },
+        )
+
+
 def _cell_panel_a(container: Any, paths: dict[str, Path]) -> None:
-    ax = container.subplots()
-    _title(ax, "a", "Conditional reference-cell scenario")
+    ax = _cell_axis(container)
+    _cell_title(ax, "a", "Standardized reference-cell scenario")
     ax.set_axis_off()
     payload = _read_json(paths["audit"] / "reference_cell_scenario.json")
     scenario = payload.get("scenario", {})
-    rows = [
-        ("Electrode area", f"{scenario.get('electrode_area_cm2', 'NA')} cm²"),
-        ("Separator thickness", f"{scenario.get('separator_thickness_um', 'NA')} μm"),
-        ("Electrolyte volume", f"{scenario.get('electrolyte_volume_mL', 'NA')} mL"),
-        ("Nominal capacitance", f"{scenario.get('nominal_capacitance_F', 'NA')} F"),
-        ("Applied current", f"{scenario.get('charge_discharge_current_A', 'NA')} A"),
-        ("Convective coefficient", f"{scenario.get('convective_heat_transfer_coefficient_W_m2_K', 'NA')} W m⁻² K⁻¹"),
-    ]
-    for index, (label, value) in enumerate(rows):
-        y = 0.88 - index * 0.105
-        ax.text(0.08, y, label, fontsize=8, color=COLORS["gray"], va="center")
-        ax.text(0.92, y, value, fontsize=8.5, fontweight="bold", ha="right", va="center")
+    scene_ax = ax.inset_axes([0.015, 0.10, 0.405, 0.82])
+    _draw_reference_cell_scene(scene_ax)
+
+    ax.plot(
+        [0.445, 0.445],
+        [0.08, 0.91],
+        transform=ax.transAxes,
+        color=CELL_COLORS["light_gray"],
+        linewidth=0.65,
+        clip_on=False,
+    )
+
+    metrics = _read_csv(paths["data"] / "reference_cell_metrics_temperature.csv")
+    final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
+    selected = _reference_cell_candidates(metrics, final) if not metrics.empty else []
     ax.text(
-        0.5,
-        0.15,
-        "$R=L/(σA)$   $τ_{RC}=RC$   $P=I^2R$\n"
-        "$ΔT(t)=PR_{th}[1-\\exp(-t/(R_{th}C_{th}))]$",
+        0.48,
+        0.90,
+        "Shared curve key",
+        transform=ax.transAxes,
+        fontsize=5.3,
+        fontweight="bold",
+        ha="left",
+        va="center",
+    )
+    legend_positions = [(0.49, 0.80), (0.74, 0.80), (0.49, 0.70), (0.74, 0.70)]
+    for index, (candidate_id, (x, y)) in enumerate(zip(selected, legend_positions)):
+        style = _cell_series_style(index)
+        label = candidate_id
+        if not metrics.empty:
+            group = metrics[metrics["candidate_id"].astype(str).eq(candidate_id)]
+            if not group.empty and group["candidate_type"].eq("observed_reference").all():
+                label = f"{candidate_id} (reference)"
+        ax.plot(
+            [x, x + 0.035],
+            [y, y],
+            transform=ax.transAxes,
+            color=style["color"],
+            linestyle=style["linestyle"],
+            linewidth=1.0,
+            marker=style["marker"],
+            markersize=2.5,
+            markevery=[1],
+            markeredgewidth=0.35,
+            markeredgecolor="white" if index < 3 else style["color"],
+            clip_on=False,
+        )
+        ax.text(
+            x + 0.044,
+            y,
+            label,
+            transform=ax.transAxes,
+            fontsize=5.0,
+            color="black",
+            ha="left",
+            va="center",
+        )
+
+    rows = [
+        (r"$A$", rf"${scenario.get('electrode_area_cm2', 'NA')}\ \mathrm{{cm^2}}$"),
+        (r"$L$", rf"${scenario.get('separator_thickness_um', 'NA')}\ \mathrm{{\mu m}}$"),
+        (r"$V$", f"{scenario.get('electrolyte_volume_mL', 'NA')} mL"),
+        (r"$C$", f"{scenario.get('nominal_capacitance_F', 'NA')} F"),
+        (r"$I$", f"{scenario.get('charge_discharge_current_A', 'NA')} A"),
+        (
+            r"$h$",
+            rf"${scenario.get('convective_heat_transfer_coefficient_W_m2_K', 'NA')}\ "
+            r"\mathrm{W\,m^{-2}\,K^{-1}}$",
+        ),
+    ]
+    ax.text(
+        0.48,
+        0.60,
+        "Fixed scenario",
+        transform=ax.transAxes,
+        fontsize=5.3,
+        fontweight="bold",
+        ha="left",
+        va="center",
+    )
+    x_positions = [0.49, 0.66, 0.83]
+    y_positions = [0.50, 0.39]
+    for index, (label, value) in enumerate(rows):
+        x = x_positions[index % 3]
+        y = y_positions[index // 3]
+        ax.text(
+            x,
+            y,
+            label,
+            transform=ax.transAxes,
+            fontsize=5.5,
+            color=CELL_COLORS["mid_gray"],
+            ha="left",
+            va="center",
+        )
+        ax.text(
+            x + 0.032,
+            y,
+            value,
+            transform=ax.transAxes,
+            fontsize=5.7,
+            fontweight="bold",
+            color="black",
+            ha="left",
+            va="center",
+        )
+    ax.text(
+        0.72,
+        0.235,
+        r"$R_{\rm el}=L/(\sigma A)$   |   $P_{\rm J}=I^2R_{\rm el}$   |   "
+        r"$\Delta T(t)=P_{\rm J}R_{\rm th}[1-e^{-t/\tau_{\rm th}}]$",
+        transform=ax.transAxes,
         ha="center",
         va="center",
-        fontsize=9,
-        bbox={"boxstyle": "round,pad=0.5", "fc": COLORS["light"], "ec": "white"},
+        fontsize=5.3,
+        color="black",
     )
     ax.text(
-        0.5,
-        0.03,
-        "Conditional comparison only; liquid phase, total cell ESR, and electrochemistry are not predicted.",
+        0.72,
+        0.095,
+        "Conditional bulk-electrolyte comparison; not full-cell performance.",
+        transform=ax.transAxes,
         ha="center",
-        fontsize=6.8,
-        color=COLORS["red"],
+        va="center",
+        fontsize=5.0,
+        color=CELL_COLORS["charcoal"],
+        fontstyle="italic",
     )
 
 
@@ -527,9 +856,12 @@ def _cell_curve_panel(
     title: str,
     metric: str,
     ylabel: str,
+    *,
+    show_legend: bool = False,
+    show_xlabel: bool = True,
 ) -> None:
-    ax = container.subplots()
-    _title(ax, letter, title)
+    ax = _cell_axis(container)
+    _cell_title(ax, letter, title, title_x=0.15)
     metrics = _read_csv(paths["data"] / "reference_cell_metrics_temperature.csv")
     final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
     if metrics.empty or metric not in metrics:
@@ -538,8 +870,6 @@ def _cell_curve_panel(
     if "analysis_window" in metrics:
         metrics = metrics[metrics["analysis_window"].eq("main")]
     selected = _reference_cell_candidates(metrics, final)
-    markers = ["o", "s", "^", "D"]
-    colors = [COLORS["blue"], COLORS["orange"], COLORS["green"], COLORS["gray"]]
     for index, candidate_id in enumerate(selected):
         group = metrics[metrics["candidate_id"].astype(str).eq(candidate_id)].sort_values(
             "temperature_K"
@@ -549,26 +879,43 @@ def _cell_curve_panel(
         label = candidate_id
         if group["candidate_type"].eq("observed_reference").all():
             label = f"{candidate_id} (reference)"
+        style = _cell_series_style(index)
         ax.plot(
             group["temperature_K"] - 273.15,
             group[metric],
             label=label,
-            color=colors[index % len(colors)],
-            marker=markers[index % len(markers)],
-            markevery=max(1, len(group) // 6),
-            markersize=3.5,
+            color=style["color"],
+            marker=style["marker"],
+            linestyle=style["linestyle"],
+            linewidth=1.0,
+            markevery=max(1, len(group) // 5),
+            markersize=2.5,
+            markeredgewidth=0.35,
+            markeredgecolor="white" if index < 3 else style["color"],
         )
-    ax.set_xlabel("Ambient temperature (°C)")
+    if show_xlabel:
+        ax.set_xlabel(r"$T_{\rm amb}$ ($^\circ$C)", labelpad=1.2)
     ax.set_ylabel(ylabel)
-    if not metrics.empty and metrics[metric].max() / max(metrics[metric].min(), 1.0e-30) > 100:
-        ax.set_yscale("log")
-    ax.legend(fontsize=6.3, frameon=False)
-    _style_axis(ax)
+    ax.set_xlim(4.0, 101.0)
+    ax.set_xticks([20.0, 60.0, 100.0])
+    ax.set_yscale("log")
+    if show_legend:
+        ax.legend(
+            fontsize=5.0,
+            frameon=False,
+            ncol=2,
+            handlelength=1.5,
+            columnspacing=0.8,
+            handletextpad=0.35,
+            borderaxespad=0.2,
+            loc="upper right",
+        )
+    _cell_style_axis(ax)
 
 
 def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
-    ax = container.subplots()
-    _title(ax, "g", "Low/high-temperature resistance retention")
+    ax = _cell_axis(container)
+    _cell_title(ax, "g", "Cold–hot endpoint trade-off")
     summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
     final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
     if summary.empty:
@@ -586,79 +933,241 @@ def _cell_panel_g(container: Any, paths: dict[str, Path]) -> None:
         {value: index for index, value in enumerate(selected_ids)}
     )
     display = display.sort_values("_order")
-    x = np.arange(len(display))
-    width = 0.36
-    ax.bar(
-        x - width / 2,
-        display["low_temperature_resistance_retention_pct"],
-        width,
-        label="Low T / reference T",
-        color=COLORS["blue"],
+    cold = (
+        display["low_temperature_resistance_retention_pct"].to_numpy(dtype=float)
+        / 100.0
     )
-    ax.bar(
-        x + width / 2,
-        display["high_temperature_resistance_retention_pct"],
-        width,
-        label="High T / reference T",
-        color=COLORS["orange"],
+    hot = (
+        display["high_temperature_resistance_retention_pct"].to_numpy(dtype=float)
+        / 100.0
     )
-    ax.axhline(100.0, color=COLORS["gray"], linewidth=1.0, linestyle="--")
-    ax.set_xticks(x)
-    ax.set_xticklabels(display["candidate_id"], rotation=35, ha="right", fontsize=6.5)
-    ax.set_ylabel("Resistance / reference-T resistance (%)")
-    ax.legend(frameon=False, fontsize=6.5)
-    _style_axis(ax)
+
+    # The two endpoint ratios are both minimized.  Highlight the non-dominated
+    # front in this deliberately narrow two-metric view without implying that it
+    # replaces the six-objective Pareto analysis used for candidate selection.
+    values = np.column_stack([cold, hot])
+    on_front = np.ones(len(display), dtype=bool)
+    for index, value in enumerate(values):
+        other = np.delete(values, index, axis=0)
+        on_front[index] = not np.any(
+            np.all(other <= value, axis=1) & np.any(other < value, axis=1)
+        )
+    front_order = np.argsort(cold[on_front])
+    ax.plot(
+        cold[on_front][front_order],
+        hot[on_front][front_order],
+        color=CELL_COLORS["blue"],
+        linewidth=0.85,
+        alpha=0.7,
+        zorder=1,
+    )
+    ax.scatter(
+        cold[~on_front],
+        hot[~on_front],
+        label="off-front (other objectives)",
+        facecolors="white",
+        edgecolors=CELL_COLORS["mid_gray"],
+        marker="o",
+        s=22,
+        linewidths=0.75,
+        zorder=2,
+    )
+    ax.scatter(
+        cold[on_front],
+        hot[on_front],
+        label="two-endpoint front",
+        color=CELL_COLORS["blue"],
+        marker="o",
+        s=27,
+        zorder=3,
+        edgecolors="white",
+        linewidths=0.5,
+    )
+
+    offsets = {
+        "UPR-0387": (4, 5),
+        "UPR-0544": (-5, 6),
+        "UPR-0446": (-7, -8),
+        "UPR-0001": (5, 5),
+        "UPR-0262": (-7, -9),
+        "UPR-0161": (5, 5),
+        "UPR-0197": (-7, 6),
+        "UPR-0195": (-5, -5),
+    }
+    for candidate_id, x_value, y_value in zip(
+        display["candidate_id"].astype(str), cold, hot
+    ):
+        dx, dy = offsets.get(candidate_id, (4, 4))
+        ax.annotate(
+            candidate_id,
+            (x_value, y_value),
+            xytext=(dx, dy),
+            textcoords="offset points",
+            ha="left" if dx >= 0 else "right",
+            va="bottom" if dy >= 0 else "top",
+            fontsize=4.8,
+            color=CELL_COLORS["charcoal"],
+            annotation_clip=False,
+        )
+
+    ax.annotate(
+        "preferred",
+        xy=(2.39, 0.109),
+        xytext=(2.58, 0.122),
+        fontsize=5.0,
+        fontweight="bold",
+        color=CELL_COLORS["teal"],
+        arrowprops={
+            "arrowstyle": "-|>",
+            "color": CELL_COLORS["teal"],
+            "lw": 0.7,
+        },
+    )
+    ax.set_xlim(2.32, 3.38)
+    ax.set_ylim(0.102, 0.195)
+    ax.set_xlabel(r"Cold penalty, $R_{5}/R_{25}$ ($\times$)", labelpad=1.5)
+    ax.set_ylabel(r"Hot residual, $R_{100}/R_{25}$ ($\times$)")
+    ax.legend(
+        frameon=False,
+        fontsize=4.8,
+        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.58, 1.01),
+        handletextpad=0.25,
+        columnspacing=0.65,
+    )
+    _cell_style_axis(ax)
 
 
 def _cell_panel_h(container: Any, paths: dict[str, Path]) -> None:
-    ax = container.subplots()
-    _title(ax, "h", "Numeric risk maximum vs. most severe risk band")
+    ax = _cell_axis(container)
+    _cell_title(ax, "h", "Population context for worst risk")
     summary = _read_csv(paths["data"] / "reference_cell_candidate_summary.csv")
+    final = _read_csv(paths["data"] / "final_prioritized_candidates.csv")
     if summary.empty:
         _empty(ax, "Reference-cell summary unavailable")
         return
-    unseen = summary[summary["candidate_type"].eq("unseen_pair_recombination")]
-    palette = {
-        "within_reference_envelope": COLORS["green"],
-        "elevated_reference_tail": COLORS["orange"],
-        "beyond_reference_tail": COLORS["red"],
-    }
-    markers = {
-        "within_reference_envelope": "o",
-        "elevated_reference_tail": "^",
-        "beyond_reference_tail": "X",
-    }
+    unseen = summary[summary["candidate_type"].eq("unseen_pair_recombination")].copy()
+    unseen = unseen[
+        np.isfinite(unseen["reference_cell_risk_index_worst"])
+        & unseen["reference_cell_risk_index_worst"].gt(0)
+    ]
+    below_q75 = unseen["reference_cell_risk_index_worst"].lt(1.0)
+    ax.axhspan(0.07, 1.0, color="#EAF3F7", alpha=0.9, zorder=0)
+    ax.axhspan(1.0, 360.0, color="#FCF1EC", alpha=0.72, zorder=0)
     ax.scatter(
-        unseen["reference_cell_risk_index_worst_temperature_K"] - 273.15,
-        unseen["reference_cell_risk_index_worst"],
-        label="maximum numeric q75 ratio",
-        facecolors="none",
-        edgecolors=COLORS["gray"],
+        unseen.loc[below_q75, "reference_cell_risk_index_worst_temperature_K"]
+        - 273.15,
+        unseen.loc[below_q75, "reference_cell_risk_index_worst"],
+        label=r"population $\Psi_{\max}<1$",
+        color=CELL_COLORS["mid_gray"],
         marker="o",
-        s=19,
-        alpha=0.5,
-        linewidths=0.55,
+        s=10,
+        alpha=0.38,
+        edgecolors="white",
+        linewidths=0.3,
+        zorder=1,
     )
-    for band in palette:
-        group = unseen[unseen["reference_cell_risk_band_worst"].eq(band)]
-        if group.empty:
-            continue
+    ax.scatter(
+        unseen.loc[~below_q75, "reference_cell_risk_index_worst_temperature_K"]
+        - 273.15,
+        unseen.loc[~below_q75, "reference_cell_risk_index_worst"],
+        label=r"population $\Psi_{\max}\geq1$",
+        color=CELL_COLORS["vermillion"],
+        marker="x",
+        s=10,
+        alpha=0.55,
+        linewidths=0.5,
+        zorder=1,
+    )
+
+    final_ids = (
+        set(final["candidate_id"].astype(str).head(8)) if not final.empty else set()
+    )
+    prioritized = unseen[unseen["candidate_id"].astype(str).isin(final_ids)]
+    if not prioritized.empty:
         ax.scatter(
-            group["reference_cell_risk_band_worst_temperature_K"] - 273.15,
-            group["reference_cell_risk_index_at_band_worst"],
-            label="band: " + band.replace("_", " "),
-            color=palette[band],
-            marker=markers[band],
-            s=26,
-            alpha=0.72,
-            edgecolors="white",
-            linewidths=0.4,
+            prioritized["reference_cell_risk_index_worst_temperature_K"] - 273.15,
+            prioritized["reference_cell_risk_index_worst"],
+            label="prioritized 8",
+            color=CELL_COLORS["blue"],
+            marker="D",
+            s=20,
+            edgecolors="black",
+            linewidths=0.45,
+            zorder=4,
         )
-    ax.axhline(1.0, color=COLORS["gray"], linestyle="--", linewidth=1.0)
-    ax.set_xlabel("Ambient temperature of each reported extreme (°C)")
-    ax.set_ylabel("q75-relative risk index")
-    ax.legend(frameon=False, fontsize=6.2)
-    _style_axis(ax)
+    ax.axhline(1.0, color="black", linestyle="--", linewidth=0.65)
+    ax.text(
+        100.0,
+        1.12,
+        r"reference $q75$: $\Psi_{\max}=1$",
+        fontsize=5.0,
+        ha="right",
+        va="bottom",
+        color="black",
+    )
+    if not prioritized.empty:
+        lowest = prioritized.loc[prioritized["reference_cell_risk_index_worst"].idxmin()]
+        highest = prioritized.loc[prioritized["reference_cell_risk_index_worst"].idxmax()]
+        ax.annotate(
+            f"lowest: {lowest['candidate_id']}",
+            (
+                float(lowest["reference_cell_risk_index_worst_temperature_K"]) - 273.15,
+                float(lowest["reference_cell_risk_index_worst"]),
+            ),
+            xytext=(-8, -10),
+            textcoords="offset points",
+            ha="right",
+            va="top",
+            fontsize=4.8,
+            color=CELL_COLORS["blue"],
+            arrowprops={"arrowstyle": "-", "color": CELL_COLORS["blue"], "lw": 0.5},
+        )
+        ax.annotate(
+            f"highest of final 8: {highest['candidate_id']}",
+            (
+                float(highest["reference_cell_risk_index_worst_temperature_K"]) - 273.15,
+                float(highest["reference_cell_risk_index_worst"]),
+            ),
+            xytext=(-14, 12),
+            textcoords="offset points",
+            ha="right",
+            va="bottom",
+            fontsize=4.8,
+            color=CELL_COLORS["blue"],
+            arrowprops={"arrowstyle": "-", "color": CELL_COLORS["blue"], "lw": 0.5},
+        )
+        ax.text(
+            0.98,
+            0.96,
+            "Final set: 8/8 below q75\n"
+            + rf"$\Psi_{{\max}}$ = {prioritized['reference_cell_risk_index_worst'].min():.3f}–"
+            + f"{prioritized['reference_cell_risk_index_worst'].max():.3f}",
+            transform=ax.transAxes,
+            ha="right",
+            va="top",
+            fontsize=5.2,
+            fontweight="bold",
+            color=CELL_COLORS["blue"],
+            bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": "none", "alpha": 0.9},
+            zorder=5,
+        )
+    ax.set_xlim(4.0, 101.0)
+    ax.set_yscale("log")
+    ax.set_ylim(0.07, 360.0)
+    ax.set_xlabel(r"Temperature of $\Psi_{\max}$ ($^\circ$C)", labelpad=1.5)
+    ax.set_ylabel(r"Worst relative risk, $\Psi_{\max}$")
+    ax.legend(
+        frameon=False,
+        fontsize=4.7,
+        ncol=3,
+        loc="upper left",
+        handletextpad=0.25,
+        columnspacing=0.55,
+        borderaxespad=0.15,
+    )
+    _cell_style_axis(ax)
 
 
 def _reference_cell_renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any], None]]:
@@ -668,21 +1177,41 @@ def _reference_cell_renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any
             container,
             paths,
             "b",
-            "Relative electrolyte-path resistance",
+            "Relative resistance",
             "relative_electrolyte_resistance",
-            r"$R(T)/R(298.15\,K)$",
+            r"$R(T)/R_{298}$",
         ),
         "c": lambda container: _cell_curve_panel(
-            container, paths, "c", "Electrolyte RC contribution", "electrolyte_RC_time_constant_s", "Electrolyte-only RC time (s)"
+            container,
+            paths,
+            "c",
+            "RC time",
+            "electrolyte_RC_time_constant_s",
+            r"$\tau_{\rm RC}$ (s)",
         ),
         "d": lambda container: _cell_curve_panel(
-            container, paths, "d", "Constant-current Joule heating", "joule_heating_power_W", "Joule power (W)"
+            container,
+            paths,
+            "d",
+            "Joule heating",
+            "joule_heating_power_W",
+            r"$P_{\rm J}$ (W)",
         ),
         "e": lambda container: _cell_curve_panel(
-            container, paths, "e", "Conditional steady temperature rise", "steady_state_temperature_rise_K", "Steady ΔT (K)"
+            container,
+            paths,
+            "e",
+            r"Steady $\Delta T$",
+            "steady_state_temperature_rise_K",
+            r"$\Delta T_{\rm ss}$ (K)",
         ),
         "f": lambda container: _cell_curve_panel(
-            container, paths, "f", "Conditional transient temperature rise", "transient_temperature_rise_K", "Transient ΔT (K)"
+            container,
+            paths,
+            "f",
+            r"$\Delta T$ after 60 s",
+            "transient_temperature_rise_K",
+            r"$\Delta T_{60\,\rm s}$ (K)",
         ),
         "g": lambda container: _cell_panel_g(container, paths),
         "h": lambda container: _cell_panel_h(container, paths),
@@ -692,16 +1221,34 @@ def _reference_cell_renderers(paths: dict[str, Path]) -> dict[str, Callable[[Any
 def generate_reference_cell_figure(
     paths: dict[str, Path], config: dict[str, Any]
 ) -> dict[str, Any]:
-    """Generate Figure 6 from persisted conditional reference-cell outputs."""
+    """Generate a Nature-style Figure 6 from persisted reference-cell outputs."""
 
     figure_config = config["figures"]
     formats = [str(value).lower() for value in figure_config["formats"]]
     dpi = int(figure_config["dpi"])
+    mpl.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            "font.size": 5.5,
+            "axes.linewidth": 0.55,
+            "axes.labelcolor": "black",
+            "axes.titlecolor": "black",
+            "xtick.color": "black",
+            "ytick.color": "black",
+            "text.color": "black",
+            "legend.frameon": False,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "svg.fonttype": "none",
+        }
+    )
     renderers = _reference_cell_renderers(paths)
     output_files: list[str] = []
     if bool(figure_config.get("make_individual_panels", True)):
         for letter, renderer in renderers.items():
-            fig = plt.figure(figsize=(6.4, 4.1), constrained_layout=True)
+            size = (7.2, 2.55) if letter == "a" else (3.0, 2.15)
+            fig = plt.figure(figsize=size, constrained_layout=True)
             renderer(fig)
             output_files.extend(
                 _save(
@@ -712,17 +1259,39 @@ def generate_reference_cell_figure(
                 )
             )
     if bool(figure_config.get("make_combined_figure", True)):
-        fig = plt.figure(figsize=(14.0, 18.0), constrained_layout=True)
-        subfigures = np.asarray(fig.subfigures(4, 2)).ravel()
-        for subfigure, renderer in zip(subfigures, renderers.values()):
-            renderer(subfigure)
-        fig.suptitle(
-            "Figure 6 | Conditional reference-cell response across ambient temperature",
-            fontsize=14,
-            fontweight="bold",
+        # Nature double-column contract: 183 mm wide and no more than 170 mm high.
+        fig = plt.figure(figsize=(183.0 / 25.4, 170.0 / 25.4))
+        grid = fig.add_gridspec(
+            3,
+            10,
+            left=0.065,
+            right=0.992,
+            bottom=0.072,
+            top=0.975,
+            wspace=0.82,
+            hspace=0.35,
+            height_ratios=[1.05, 0.85, 1.00],
         )
+        axes = {
+            "a": fig.add_subplot(grid[0, 0:10]),
+            "b": fig.add_subplot(grid[1, 0:2]),
+            "c": fig.add_subplot(grid[1, 2:4]),
+            "d": fig.add_subplot(grid[1, 4:6]),
+            "e": fig.add_subplot(grid[1, 6:8]),
+            "f": fig.add_subplot(grid[1, 8:10]),
+            "g": fig.add_subplot(grid[2, 0:5]),
+            "h": fig.add_subplot(grid[2, 5:10]),
+        }
+        for letter, renderer in renderers.items():
+            renderer(axes[letter])
         output_files.extend(
-            _save(fig, paths["figures"] / "figure6_reference_cell_scenario", formats, dpi)
+            _save(
+                fig,
+                paths["figures"] / "figure6_reference_cell_scenario",
+                formats,
+                dpi,
+                tight=False,
+            )
         )
     return {
         "reference_cell_figure_files": output_files,

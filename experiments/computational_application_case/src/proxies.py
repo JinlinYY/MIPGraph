@@ -45,7 +45,7 @@ def log_iqr_standardize(
     return (float(np.log10(scalar) - median) / denominator, protected)
 
 
-def interfacial_window_deviation(
+def surface_tension_reference_envelope_deviation(
     surface_tension: float,
     lower_quantile: float,
     upper_quantile: float,
@@ -151,7 +151,7 @@ def compute_application_proxies(
     output["z_conductivity"] = np.nan
     output["z_viscosity"] = np.nan
     output["transport_favorability"] = np.nan
-    output["interfacial_window_deviation"] = np.nan
+    output["surface_tension_reference_envelope_deviation"] = np.nan
     output["proxy_warnings"] = ""
     references = output[output["candidate_type"].eq("observed_reference")]
     for temperature, indices in output.groupby("temperature_K").groups.items():
@@ -182,8 +182,8 @@ def compute_application_proxies(
             output.at[index, "transport_favorability"] = transport_favorability(
                 z_sigma, z_eta
             )
-            output.at[index, "interfacial_window_deviation"] = (
-                interfacial_window_deviation(
+            output.at[index, "surface_tension_reference_envelope_deviation"] = (
+                surface_tension_reference_envelope_deviation(
                     float(output.at[index, "SurfaceTension"]),
                     float(gamma_low),
                     float(gamma_high),
@@ -266,7 +266,7 @@ def summarize_whole_temperature_window(proxy_table: pd.DataFrame) -> pd.DataFram
         "volumetric_heat_capacity",
         "thermal_diffusivity",
         "simplified_thermal_diffusion_timescale",
-        "interfacial_window_deviation",
+        "surface_tension_reference_envelope_deviation",
         "Density",
     }
     missing = sorted(required - set(proxy_table.columns))
@@ -289,6 +289,10 @@ def summarize_whole_temperature_window(proxy_table: pd.DataFrame) -> pd.DataFram
             "anion_smiles",
             "il_smiles",
             "canonical_il_key",
+            "canonical_cation_smiles",
+            "canonical_anion_smiles",
+            "cation_identity_key",
+            "anion_identity_key",
             "cation_support_count",
             "anion_support_count",
         ]:
@@ -304,8 +308,8 @@ def summarize_whole_temperature_window(proxy_table: pd.DataFrame) -> pd.DataFram
                 "simplified_thermal_diffusion_timescale",
                 "max",
             ),
-            "interfacial_deviation_worst": (
-                "interfacial_window_deviation",
+            "surface_tension_reference_envelope_deviation_worst": (
+                "surface_tension_reference_envelope_deviation",
                 "max",
             ),
         }
@@ -326,7 +330,7 @@ def summarize_whole_temperature_window(proxy_table: pd.DataFrame) -> pd.DataFram
             "volumetric_heat_capacity",
             "thermal_diffusivity",
             "simplified_thermal_diffusion_timescale",
-            "interfacial_window_deviation",
+            "surface_tension_reference_envelope_deviation",
             "Density",
         ]:
             row.update(_temperature_diagnostics(group, column))

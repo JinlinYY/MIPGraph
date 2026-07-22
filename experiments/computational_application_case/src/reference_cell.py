@@ -13,13 +13,12 @@ REQUIRED_SCENARIO_FIELDS = (
     "electrode_area_cm2",
     "separator_thickness_um",
     "electrolyte_volume_mL",
-    "nominal_capacitance_F",
     "charge_discharge_current_A",
     "convective_heat_transfer_coefficient_W_m2_K",
     "exposed_face_count",
     "transient_duration_s",
     "reference_temperature_K",
-    "risk_reference_quantiles",
+    "exceedance_reference_quantiles",
 )
 
 REQUIRED_PROXY_COLUMNS = (
@@ -31,7 +30,7 @@ REQUIRED_PROXY_COLUMNS = (
     "volumetric_heat_capacity",
 )
 
-RISK_BAND_ORDER = {
+EXCEEDANCE_BAND_ORDER = {
     "within_reference_envelope": 0,
     "elevated_reference_tail": 1,
     "beyond_reference_tail": 2,
@@ -53,17 +52,17 @@ def _validated_scenario(
         if field == "exposed_face_count" and not value.is_integer():
             raise ValueError("reference_cell.exposed_face_count must be an integer")
         scenario[field] = int(value) if field == "exposed_face_count" else value
-    quantiles = [float(value) for value in config["risk_reference_quantiles"]]
+    quantiles = [float(value) for value in config["exceedance_reference_quantiles"]]
     if len(quantiles) != 2 or not 0.0 < quantiles[0] < quantiles[1] < 1.0:
         raise ValueError(
-            "reference_cell.risk_reference_quantiles must contain two ordered values in (0, 1)"
+            "reference_cell.exceedance_reference_quantiles must contain two ordered values in (0, 1)"
         )
     if not np.allclose(quantiles, [0.75, 0.95], rtol=0.0, atol=1.0e-12):
         raise ValueError(
-            "reference_cell.risk_reference_quantiles must be exactly [0.75, 0.95] "
-            "because the persisted risk schema names q75 and q95 explicitly"
+            "reference_cell.exceedance_reference_quantiles must be exactly [0.75, 0.95] "
+            "because the persisted exceedance schema names q75 and q95 explicitly"
         )
-    scenario["risk_reference_quantiles"] = quantiles
+    scenario["exceedance_reference_quantiles"] = quantiles
     scenario["scenario_name"] = str(
         config.get("scenario_name", "conditional_reference_cell")
     )
@@ -94,7 +93,7 @@ def _add_relative_resistance(
     return output
 
 
-def _annotate_comparative_risk(
+def _annotate_reference_exceedance(
     metrics: pd.DataFrame,
     quantiles: list[float],
 ) -> pd.DataFrame:
@@ -122,16 +121,16 @@ def _annotate_comparative_risk(
     output = metrics.merge(thresholds, on="temperature_K", how="left", validate="many_to_one")
     electrical_q75 = output["reference_electrolyte_resistance_ohm_q75"]
     thermal_q75 = output["reference_transient_temperature_rise_K_q75"]
-    output["electrical_risk_ratio_to_reference_q75"] = (
+    output["electrical_exceedance_ratio_to_reference_q75"] = (
         output["electrolyte_resistance_ohm"] / electrical_q75
     )
-    output["thermal_risk_ratio_to_reference_q75"] = (
+    output["thermal_exceedance_ratio_to_reference_q75"] = (
         output["transient_temperature_rise_K"] / thermal_q75
     )
-    output["reference_cell_risk_index"] = output[
+    output["reference_cell_exceedance_index"] = output[
         [
-            "electrical_risk_ratio_to_reference_q75",
-            "thermal_risk_ratio_to_reference_q75",
+            "electrical_exceedance_ratio_to_reference_q75",
+            "thermal_exceedance_ratio_to_reference_q75",
         ]
     ].max(axis=1)
     electrical_q95 = output["reference_electrolyte_resistance_ohm_q95"]
@@ -140,7 +139,7 @@ def _annotate_comparative_risk(
     beyond_thermal = output["transient_temperature_rise_K"] > thermal_q95
     elevated_electrical = output["electrolyte_resistance_ohm"] > electrical_q75
     elevated_thermal = output["transient_temperature_rise_K"] > thermal_q75
-    output["reference_cell_risk_band"] = np.select(
+    output["reference_cell_exceedance_band"] = np.select(
         [beyond_electrical | beyond_thermal, elevated_electrical | elevated_thermal],
         ["beyond_reference_tail", "elevated_reference_tail"],
         default="within_reference_envelope",
@@ -153,7 +152,7 @@ def _annotate_comparative_risk(
         if thermal:
             reason.append("thermal")
         reasons.append(";".join(reason) if reason else "none")
-    output["reference_cell_risk_reason"] = reasons
+    output["reference_cell_exceedance_component"] = reasons
     return output
 
 
@@ -169,15 +168,15 @@ def _summarize_reference_cell_metrics(
         reference = group[
             np.isclose(group["temperature_K"], reference_temperature_K, atol=1.0e-8)
         ].iloc[0]
-        risk_order = group["reference_cell_risk_band"].map(RISK_BAND_ORDER)
-        worst_band_order = int(risk_order.max())
-        worst_candidates = group[risk_order.eq(worst_band_order)].sort_values(
-            ["reference_cell_risk_index", "temperature_K"],
+        exceedance_order = group["reference_cell_exceedance_band"].map(EXCEEDANCE_BAND_ORDER)
+        worst_band_order = int(exceedance_order.max())
+        worst_candidates = group[exceedance_order.eq(worst_band_order)].sort_values(
+            ["reference_cell_exceedance_index", "temperature_K"],
             ascending=[False, True],
         )
         worst_band = worst_candidates.iloc[0]
         worst_index = group.sort_values(
-            ["reference_cell_risk_index", "temperature_K"],
+            ["reference_cell_exceedance_index", "temperature_K"],
             ascending=[False, True],
         ).iloc[0]
 
@@ -188,7 +187,6 @@ def _summarize_reference_cell_metrics(
         maximum_resistance, maximum_resistance_temperature = maximum(
             "electrolyte_resistance_ohm"
         )
-        maximum_rc, maximum_rc_temperature = maximum("electrolyte_RC_time_constant_s")
         maximum_power, maximum_power_temperature = maximum("joule_heating_power_W")
         maximum_steady_rise, maximum_steady_temperature = maximum(
             "steady_state_temperature_rise_K"
@@ -229,37 +227,32 @@ def _summarize_reference_cell_metrics(
                 / high_resistance,
                 "electrolyte_resistance_ohm_worst": maximum_resistance,
                 "electrolyte_resistance_worst_temperature_K": maximum_resistance_temperature,
-                "electrolyte_RC_time_constant_s_worst": maximum_rc,
-                "electrolyte_RC_worst_temperature_K": maximum_rc_temperature,
                 "joule_heating_power_W_worst": maximum_power,
                 "joule_heating_worst_temperature_K": maximum_power_temperature,
                 "steady_state_temperature_rise_K_worst": maximum_steady_rise,
                 "steady_state_temperature_rise_worst_temperature_K": maximum_steady_temperature,
                 "transient_temperature_rise_K_worst": maximum_transient_rise,
                 "transient_temperature_rise_worst_temperature_K": maximum_transient_temperature,
-                "reference_cell_risk_index_worst": float(
-                    worst_index["reference_cell_risk_index"]
+                "reference_cell_exceedance_index_worst": float(
+                    worst_index["reference_cell_exceedance_index"]
                 ),
-                "reference_cell_risk_band_worst": str(
-                    worst_band["reference_cell_risk_band"]
+                "reference_cell_exceedance_band_worst": str(
+                    worst_band["reference_cell_exceedance_band"]
                 ),
-                "reference_cell_worst_temperature_K": float(
+                "reference_cell_exceedance_index_worst_temperature_K": float(
                     worst_index["temperature_K"]
                 ),
-                "reference_cell_risk_index_worst_temperature_K": float(
-                    worst_index["temperature_K"]
+                "reference_cell_exceedance_component_worst": str(
+                    worst_index["reference_cell_exceedance_component"]
                 ),
-                "reference_cell_risk_reason_worst": str(
-                    worst_index["reference_cell_risk_reason"]
+                "reference_cell_exceedance_index_at_band_worst": float(
+                    worst_band["reference_cell_exceedance_index"]
                 ),
-                "reference_cell_risk_index_at_band_worst": float(
-                    worst_band["reference_cell_risk_index"]
-                ),
-                "reference_cell_risk_band_worst_temperature_K": float(
+                "reference_cell_exceedance_band_worst_temperature_K": float(
                     worst_band["temperature_K"]
                 ),
-                "reference_cell_risk_band_reason_worst": str(
-                    worst_band["reference_cell_risk_reason"]
+                "reference_cell_exceedance_band_component_worst": str(
+                    worst_band["reference_cell_exceedance_component"]
                 ),
                 "scenario_interpretation": "conditional_liquid_phase_not_verified",
             }
@@ -289,7 +282,6 @@ def simulate_reference_cell_scenario(
     area_m2 = float(scenario["electrode_area_cm2"]) * 1.0e-4
     thickness_m = float(scenario["separator_thickness_um"]) * 1.0e-6
     volume_m3 = float(scenario["electrolyte_volume_mL"]) * 1.0e-6
-    capacitance_F = float(scenario["nominal_capacitance_F"])
     current_A = float(scenario["charge_discharge_current_A"])
     heat_transfer_coefficient = float(
         scenario["convective_heat_transfer_coefficient_W_m2_K"]
@@ -303,9 +295,6 @@ def simulate_reference_cell_scenario(
     output["electrolyte_resistance_ohm"] = thickness_m / (
         output["ElectricalConductivity"] * area_m2
     )
-    output["electrolyte_RC_time_constant_s"] = (
-        output["electrolyte_resistance_ohm"] * capacitance_F
-    )
     output["joule_heating_power_W"] = (
         current_A**2 * output["electrolyte_resistance_ohm"]
     )
@@ -318,6 +307,14 @@ def simulate_reference_cell_scenario(
     output["thermal_resistance_K_per_W"] = (
         output["internal_thermal_conduction_resistance_K_per_W"]
         + output["convective_thermal_resistance_K_per_W"]
+    )
+    output["thermal_resistance_conduction_fraction"] = (
+        output["internal_thermal_conduction_resistance_K_per_W"]
+        / output["thermal_resistance_K_per_W"]
+    )
+    output["thermal_resistance_convection_fraction"] = (
+        output["convective_thermal_resistance_K_per_W"]
+        / output["thermal_resistance_K_per_W"]
     )
     output["electrolyte_thermal_capacitance_J_per_K"] = (
         output["volumetric_heat_capacity"] * volume_m3
@@ -342,8 +339,8 @@ def simulate_reference_cell_scenario(
     output = _add_relative_resistance(
         output, float(scenario["reference_temperature_K"])
     )
-    output = _annotate_comparative_risk(
-        output, list(scenario["risk_reference_quantiles"])
+    output = _annotate_reference_exceedance(
+        output, list(scenario["exceedance_reference_quantiles"])
     )
     output["scenario_interpretation"] = "conditional_liquid_phase_not_verified"
     output = output.sort_values(["candidate_id", "temperature_K"]).reset_index(drop=True)
@@ -364,16 +361,18 @@ def simulate_reference_cell_scenario(
         "scenario": dict(scenario),
         "equations": {
             "electrolyte_resistance_ohm": "separator_thickness_m / (conductivity_S_m-1 * electrode_area_m2)",
-            "electrolyte_RC_time_constant_s": "electrolyte_resistance_ohm * nominal_capacitance_F",
             "joule_heating_power_W": "charge_discharge_current_A^2 * electrolyte_resistance_ohm",
             "thermal_resistance_K_per_W": "separator_thickness_m / (thermal_conductivity_W_m-1_K-1 * electrode_area_m2) + 1 / (h_W_m-2_K-1 * exposed_face_count * electrode_area_m2)",
+            "thermal_resistance_conduction_fraction": "[separator_thickness_m / (thermal_conductivity_W_m-1_K-1 * electrode_area_m2)] / thermal_resistance_K_per_W",
+            "thermal_resistance_convection_fraction": "[1 / (h_W_m-2_K-1 * exposed_face_count * electrode_area_m2)] / thermal_resistance_K_per_W",
             "thermal_capacitance_J_per_K": "volumetric_heat_capacity_J_m-3_K-1 * electrolyte_volume_m3",
             "transient_temperature_rise_K": "P_Joule * R_thermal * (1 - exp(-duration_s / (R_thermal * C_thermal)))",
         },
-        "risk_definition": (
+        "exceedance_definition": (
             "At each temperature, electrical resistance and transient temperature rise "
             "are compared with observed-reference q75/q95 values. The worst band and "
-            "maximum q75 ratio are comparative priorities, not safety limits; because "
+            "maximum q75 ratio are comparative exceedance contexts, not safety, failure, "
+            "or thermal-runaway risks; because "
             "they can occur at different temperatures, both extrema retain separate "
             "temperature fields."
         ),

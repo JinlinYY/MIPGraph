@@ -1,0 +1,41 @@
+candidate_id,neighbor_rank,training_reference_id,training_IL_name,descriptor_distance,observed_viscosity_min_Pa_s,observed_viscosity_max_Pa_s,observed_conductivity_min_S_m,observed_conductivity_max_S_m,observed_rows_at_ambient_pressure_in_main_window
+UPR-0581,1,CCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-hexyl-3-methylimidazolium tetracyanoborate,0.8688831281610394,0.0075265,0.04969,,,21
+UPR-0581,2,CCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methyl-1H-imidazolium tetracyanoborate,1.0240126203292295,0.00656,0.0261,,,18
+UPR-0581,3,CC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-ethyl-3-methylimidazolium tetracyanoborate,3.130425906039819,0.0044772,0.0183242857142857,1.556,5.1,13
+UPR-0581,4,CCCC[n+]1cccc(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methylpyridinium tetracyanoborate,4.184022041794517,,,,,2
+UPR-0581,5,CCCCCCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-decyl-3-methyl-1H-imidazolium tetracyanoborate,4.537535174883798,,,,,12
+UPR-0209,1,CCCC[n+]1ccc(C)cc1.N#C[C-](C#N)C#N,1-butyl-4-methylpyridinium tricyanomethanide,1.4598709501488218,,,,,28
+UPR-0209,2,CCCCCCCCn1cc[n+](C)c1.N#C[C-](C#N)C#N,1-methyl-3-octylimidazolium tricyanomethanide,3.983117672079944,,,,,12
+UPR-0209,3,CCCCCCn1cc[n+](C)c1.N#C[C-](C#N)C#N,3-hexyl-1-methylimidazolium tricyanomethanide,4.052734272801607,,,,,12
+UPR-0209,4,CCCC[n+]1ccn(C)c1.N#C[C-](C#N)C#N,1-butyl-3-methylimidazolium tricyanomethane,4.66956373652388,0.00569,0.02785,1.16,3.17,59
+UPR-0209,5,CCCCCCCCCCn1cc[n+](C)c1.N#C[C-](C#N)C#N,3-decyl-1-methylimidazolium tricyanomethanide,4.7264303883130365,,,,,12
+UPR-0024,1,CC[N+](C)(C)CCOC.O=S(=O)([N-]S(=O)(=O)C(F)(F)F)C(F)(F)F,"N-ethyl-N,N-dimethyl-2-methoxyethylammonium bis(trifluoromethylsulfonyl)imide",8.561990080595073,0.0132,0.0594,0.288,0.633,7
+UPR-0024,2,CCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-hexyl-3-methylimidazolium tetracyanoborate,8.595136652541518,0.0075265,0.04969,,,21
+UPR-0024,3,CCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methyl-1H-imidazolium tetracyanoborate,8.650754224356819,0.00656,0.0261,,,18
+UPR-0024,4,CC[N+](CC)(CC)CCOC.O=S(=O)([N-]S(=O)(=O)C(F)(F)F)C(F)(F)F,"N,N,N-triethyl-2-methoxyethan-1-aminium bis((trifluoromethyl)sulfonyl)amide",8.843784564341911,,,,,12
+UPR-0024,5,CCCC[n+]1cccc(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methylpyridinium tetracyanoborate,8.929866371810363,,,,,2
+UPR-0393,1,CCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methyl-1H-imidazolium tetracyanoborate,0.7702747899691056,0.00656,0.0261,,,18
+UPR-0393,2,CCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-hexyl-3-methylimidazolium tetracyanoborate,1.3793092327956091,0.0075265,0.04969,,,21
+UPR-0393,3,CC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-ethyl-3-methylimidazolium tetracyanoborate,2.865643168095171,0.0044772,0.0183242857142857,1.556,5.1,13
+UPR-0393,4,CCCC[n+]1cccc(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methylpyridinium tetracyanoborate,4.1393252449249385,,,,,2
+UPR-0393,5,CCCCCCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-decyl-3-methyl-1H-imidazolium tetracyanoborate,4.910122956726513,,,,,12
+UPR-0343,1,CC(=O)[O-].CCN1C=C[NH+]=C1,1-ethyl-1H-imidazolium acetate,2.1385573379384373,0.00155,0.005,,,12
+UPR-0343,2,CC(=O)[O-].CC[n+]1ccn(C)c1,1-ethyl-3-methylimidazolium acetate,2.376783533730964,0.0126893333333333,0.1360142857142857,0.284525,2.223,66
+UPR-0343,3,C=CCn1cc[n+](C)c1.CCC(=O)[O-],1-allyl-3-methyl-1H-imidazol-3-ium propionate,2.545606052877722,,,0.18,0.18,1
+UPR-0343,4,CC(=O)[O-].Cn1cc[nH+]c1,1-methylimidazolium acetate,2.6572848196154157,0.004395,0.006926,0.333,0.4,15
+UPR-0343,5,CCC(=O)[O-].CCC[n+]1ccn(C)c1,1-propyl-3-methylimidazolium propionate,2.674413614371766,,,,,7
+UPR-0550,1,CCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methyl-1H-imidazolium tetracyanoborate,0.8446319904617552,0.00656,0.0261,,,18
+UPR-0550,2,CCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-hexyl-3-methylimidazolium tetracyanoborate,1.4861099503282644,0.0075265,0.04969,,,21
+UPR-0550,3,CC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-ethyl-3-methylimidazolium tetracyanoborate,3.0922405994417086,0.0044772,0.0183242857142857,1.556,5.1,13
+UPR-0550,4,CCCC[n+]1cccc(C)c1.N#C[B-](C#N)(C#N)C#N,1-butyl-3-methylpyridinium tetracyanoborate,4.1825607303595795,,,,,2
+UPR-0550,5,CCCCCCCCCC[n+]1ccn(C)c1.N#C[B-](C#N)(C#N)C#N,1-decyl-3-methyl-1H-imidazolium tetracyanoborate,4.662250187305377,,,,,12
+UPR-0419,1,CC(=O)[O-].Cn1cc[nH+]c1,1-methylimidazolium acetate,1.898788508765053,0.004395,0.006926,0.333,0.4,15
+UPR-0419,2,CC(=O)[O-].CCN1C=C[NH+]=C1,1-ethyl-1H-imidazolium acetate,2.638373691551008,0.00155,0.005,,,12
+UPR-0419,3,CC(=O)[O-].CC[n+]1ccn(C)c1,1-ethyl-3-methylimidazolium acetate,3.6773252022114806,0.0126893333333333,0.1360142857142857,0.284525,2.223,66
+UPR-0419,4,C=CCn1cc[n+](C)c1.CCC(=O)[O-],1-allyl-3-methyl-1H-imidazol-3-ium propionate,4.175389215907465,,,0.18,0.18,1
+UPR-0419,5,CCC(=O)[O-].CCC[n+]1ccn(C)c1,1-propyl-3-methylimidazolium propionate,4.339502613003366,,,,,7
+UPR-0558,1,CCCCn1cc[nH+]c1.O=C([O-])C(F)(F)F,N-butylimidazolium trifluoroacetate,1.1684113277978465,0.0083,0.0342,0.32,0.61,6
+UPR-0558,2,CCCCCC[n+]1ccn(C)c1.O=C([O-])C(F)(F)F,1-hexyl-3-methylimidazolium trifluoroacetate,2.8283160981911055,,,,,5
+UPR-0558,3,CCCC[n+]1ccn(C)c1.O=C([O-])C(F)(F)C(F)(F)C(F)(F)F,not available in filtered rows,3.8308393825168845,,,,,0
+UPR-0558,4,CC[n+]1ccn(C)c1.O=C([O-])C(F)(F)C(F)(F)C(F)(F)F,not available in filtered rows,3.9895033467014906,,,,,0
+UPR-0558,5,CCC(=O)[O-].CCC[n+]1ccn(C)c1,1-propyl-3-methylimidazolium propionate,4.182732021557388,,,,,7

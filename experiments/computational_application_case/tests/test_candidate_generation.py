@@ -16,6 +16,9 @@ CATION_A = "C[N+](C)(C)C"
 CATION_B = "CC[N+](C)(C)C"
 ANION_CL = "[Cl-]"
 ANION_BR = "[Br-]"
+IMIDAZOLIUM_RESONANCE_A = "CC[n+]1ccn(C)c1"
+IMIDAZOLIUM_RESONANCE_B = "CCn1cc[n+](C)c1"
+ANION_OTF = "O=S(=O)([O-])C(F)(F)F"
 
 
 def test_charge_based_roles_are_identified_independent_of_fragment_order() -> None:
@@ -36,6 +39,12 @@ def test_canonical_pair_key_deduplicates_fragment_order_and_smiles_order() -> No
     reversed_pair = canonical_pair_key(f"{ANION_CL}.{CATION_A}")
     equivalent = canonical_pair_key("[Cl-].C[N+](C)(C)C")
     assert forward == reversed_pair == equivalent
+
+
+def test_pair_identity_is_invariant_to_imidazolium_resonance_smiles() -> None:
+    first = canonical_pair_key(f"{IMIDAZOLIUM_RESONANCE_A}.{ANION_OTF}")
+    second = canonical_pair_key(f"{IMIDAZOLIUM_RESONANCE_B}.{ANION_OTF}")
+    assert first == second
 
 
 def test_generation_excludes_observed_pairs_and_records_support() -> None:

@@ -1,0 +1,2 @@
+formal_candidate_count,temperature_row_count,conduction_fraction_min,conduction_fraction_median,conduction_fraction_max,convection_fraction_min,convection_fraction_median,convection_fraction_max,pearson_log_resistance_vs_log_temperature_rise,interpretation
+8,96,0.009999163423435,0.01157897939355825,0.0132333866377885,0.9867666133622114,0.9884210206064417,0.9900008365765648,0.9999958932564385,conditional temperature-rise differences are dominated by electrolyte resistance under the selected boundary condition; thermal-conductivity differences provide a secondary contribution

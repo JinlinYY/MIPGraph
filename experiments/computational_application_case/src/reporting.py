@@ -65,21 +65,19 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "viscosity_worst",
         "volumetric_heat_capacity_worst",
         "thermal_diffusivity_worst",
-        "interfacial_deviation_worst",
+        "surface_tension_reference_envelope_deviation_worst",
         "electrolyte_resistance_ohm_worst",
-        "electrolyte_RC_time_constant_s_worst",
         "joule_heating_power_W_worst",
         "steady_state_temperature_rise_K_worst",
         "transient_temperature_rise_K_worst",
         "low_temperature_conductivity_retention_pct",
         "low_temperature_resistance_retention_pct",
         "high_temperature_resistance_retention_pct",
-        "reference_cell_risk_index_worst",
-        "reference_cell_risk_band_worst",
-        "reference_cell_worst_temperature_K",
-        "reference_cell_risk_index_worst_temperature_K",
-        "reference_cell_risk_index_at_band_worst",
-        "reference_cell_risk_band_worst_temperature_K",
+        "reference_cell_exceedance_index_worst",
+        "reference_cell_exceedance_band_worst",
+        "reference_cell_exceedance_index_worst_temperature_K",
+        "reference_cell_exceedance_index_at_band_worst",
+        "reference_cell_exceedance_band_worst_temperature_K",
         "main_advantage",
         "main_limitation",
         "downstream_priority",
@@ -98,21 +96,19 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
             "viscosity_worst": "Worst-case viscosity (Pa s)",
             "volumetric_heat_capacity_worst": "Minimum volumetric heat capacity (J m^-3 K^-1)",
             "thermal_diffusivity_worst": "Minimum thermal diffusivity (m^2 s^-1)",
-            "interfacial_deviation_worst": "Maximum interfacial deviation (reference IQR)",
+            "surface_tension_reference_envelope_deviation_worst": "Maximum surface-tension reference-envelope deviation (reference IQR)",
             "electrolyte_resistance_ohm_worst": "Worst ideal electrolyte resistance (ohm)",
-            "electrolyte_RC_time_constant_s_worst": "Worst electrolyte-only RC time (s)",
             "joule_heating_power_W_worst": "Worst conditional Joule power (W)",
             "steady_state_temperature_rise_K_worst": "Worst conditional steady temperature rise (K)",
             "transient_temperature_rise_K_worst": "Worst conditional transient temperature rise (K)",
             "low_temperature_conductivity_retention_pct": "Low-temperature conductivity retention (%)",
             "low_temperature_resistance_retention_pct": "Low-temperature resistance retention (%)",
             "high_temperature_resistance_retention_pct": "High-temperature resistance retention (%)",
-            "reference_cell_risk_index_worst": "Worst reference-cell risk index",
-            "reference_cell_risk_band_worst": "Worst reference-cell risk band",
-            "reference_cell_worst_temperature_K": "Worst reference-cell temperature (K)",
-            "reference_cell_risk_index_worst_temperature_K": "Maximum numeric risk-index temperature (K)",
-            "reference_cell_risk_index_at_band_worst": "Risk index at most severe risk-band temperature",
-            "reference_cell_risk_band_worst_temperature_K": "Most severe risk-band temperature (K)",
+            "reference_cell_exceedance_index_worst": "Worst reference-cell exceedance index",
+            "reference_cell_exceedance_band_worst": "Worst reference-cell exceedance band",
+            "reference_cell_exceedance_index_worst_temperature_K": "Maximum numeric exceedance-index temperature (K)",
+            "reference_cell_exceedance_index_at_band_worst": "Exceedance index at most severe band temperature",
+            "reference_cell_exceedance_band_worst_temperature_K": "Most severe exceedance-band temperature (K)",
             "main_advantage": "Main advantage",
             "main_limitation": "Main limitation",
             "downstream_priority": "Downstream qualification priority",
@@ -131,7 +127,7 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "viscosity_worst",
         "volumetric_heat_capacity_worst",
         "thermal_diffusivity_worst",
-        "interfacial_deviation_worst",
+        "surface_tension_reference_envelope_deviation_worst",
         "severe_curve_failure_count",
     ]
     references = robust[robust.get("candidate_type", pd.Series(index=robust.index, dtype=str)).eq("observed_reference")].reindex(columns=reference_columns)
@@ -143,7 +139,7 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         ("Viscosity", "maximum", threshold_payload.get("viscosity_max"), "Pa s", f"observed-reference q={threshold_payload.get('viscosity_reference_quantile', 'not available')}"),
         ("Volumetric heat capacity", "minimum", threshold_payload.get("volumetric_heat_capacity_min"), "J m^-3 K^-1", f"observed-reference q={threshold_payload.get('volumetric_heat_capacity_reference_quantile', 'not available')}"),
         ("Thermal diffusivity", "minimum", threshold_payload.get("thermal_diffusivity_min"), "m^2 s^-1", f"observed-reference q={threshold_payload.get('thermal_diffusivity_reference_quantile', 'not available')}"),
-        ("Interfacial-window deviation", "maximum", threshold_payload.get("interfacial_deviation_max"), "reference IQR", "configured physical proxy bound"),
+        ("Surface-tension reference-envelope deviation", "maximum", threshold_payload.get("surface_tension_reference_envelope_deviation_max"), "reference IQR", "configured reference-envelope bound"),
     ]
     thresholds = pd.DataFrame(threshold_rows, columns=["criterion", "direction", "threshold", "unit", "derivation"])
     write_csv(thresholds, paths["tables"] / "screening_thresholds.csv")
@@ -153,7 +149,6 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "electrode_area_cm2": "cm^2",
         "separator_thickness_um": "micrometre",
         "electrolyte_volume_mL": "mL",
-        "nominal_capacitance_F": "F",
         "charge_discharge_current_A": "A",
         "convective_heat_transfer_coefficient_W_m2_K": "W m^-2 K^-1",
         "exposed_face_count": "count",
@@ -194,15 +189,14 @@ def generate_tables(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
             "low_temperature_resistance_retention_pct",
             "high_temperature_resistance_retention_pct",
             "electrolyte_resistance_ohm_worst",
-            "electrolyte_RC_time_constant_s_worst",
             "joule_heating_power_W_worst",
             "steady_state_temperature_rise_K_worst",
             "transient_temperature_rise_K_worst",
-            "reference_cell_risk_index_worst",
-            "reference_cell_risk_band_worst",
-            "reference_cell_risk_index_worst_temperature_K",
-            "reference_cell_risk_index_at_band_worst",
-            "reference_cell_risk_band_worst_temperature_K",
+            "reference_cell_exceedance_index_worst",
+            "reference_cell_exceedance_band_worst",
+            "reference_cell_exceedance_index_worst_temperature_K",
+            "reference_cell_exceedance_index_at_band_worst",
+            "reference_cell_exceedance_band_worst_temperature_K",
         ]
     )
     write_csv(cell_table, paths["tables"] / "reference_cell_candidate_summary.csv")
@@ -244,17 +238,18 @@ def _candidate_bullets(final: pd.DataFrame) -> list[str]:
     lines = []
     for row in final.itertuples(index=False):
         scenario = ""
-        if hasattr(row, "reference_cell_risk_band_worst"):
+        if hasattr(row, "reference_cell_exceedance_band_worst"):
             scenario = (
                 f" Conditional scenario: worst ideal electrolyte resistance "
                 f"{_fmt(row.electrolyte_resistance_ohm_worst)} ohm, worst transient "
                 f"rise {_fmt(row.transient_temperature_rise_K_worst)} K, low/high-temperature "
                 f"resistance retention {_fmt(row.low_temperature_resistance_retention_pct)}%/"
                 f"{_fmt(row.high_temperature_resistance_retention_pct)}%, "
-                f"maximum risk index {_fmt(row.reference_cell_risk_index_worst)} at "
-                f"{_fmt(row.reference_cell_risk_index_worst_temperature_K)} K; most severe "
-                f"band `{row.reference_cell_risk_band_worst}` at "
-                f"{_fmt(row.reference_cell_risk_band_worst_temperature_K)} K."
+                f"maximum reference-population exceedance index "
+                f"{_fmt(row.reference_cell_exceedance_index_worst)} at "
+                f"{_fmt(row.reference_cell_exceedance_index_worst_temperature_K)} K; most severe "
+                f"band `{row.reference_cell_exceedance_band_worst}` at "
+                f"{_fmt(row.reference_cell_exceedance_band_worst_temperature_K)} K."
             )
         lines.append(
             f"- `{row.candidate_id}` ({row.recommendation_class}, {row.AD_status}, Pareto rank {int(row.Pareto_rank)}): advantage `{row.main_advantage}`; limitation `{row.main_limitation}`; next priority: {row.downstream_priority}.{scenario}"
@@ -283,9 +278,9 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         for path in sorted(case_root.rglob("*"))
         if path.is_file()
         and "__pycache__" not in path.parts
-        and (
-            "outputs" not in path.parts
-            or path.name in {".gitignore", ".gitkeep", "README.md"}
+        and not any(
+            part.startswith("outputs")
+            for part in path.relative_to(case_root).parts
         )
     ]
     test_record = _read_json(paths["audit"] / "unit_test_results.json")
@@ -296,7 +291,7 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
     unresolved = [
         "reference embedding distance unavailable",
         "candidate liquid-phase persistence across the modeled window is not verified",
-        "reference-cell geometry, capacitance, current, and heat transfer are fixed scenario assumptions rather than calibrated device parameters",
+        "reference-cell geometry, current, and heat transfer are fixed scenario assumptions rather than calibrated device parameters",
     ]
     if not uncertainty_available:
         unresolved.append("predictive uncertainty unavailable for the single configured checkpoint")
@@ -352,13 +347,15 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "reference_cell_not_a_device_prediction": reference_cell_audit.get(
             "not_a_device_prediction", True
         ),
-        "reference_cell_risk_band_counts": reference_cell_step.get(
-            "risk_band_counts", {}
+        "reference_cell_exceedance_band_counts": reference_cell_step.get(
+            "exceedance_band_counts", {}
         ),
         "counterfactual_summary_rows": int(len(counterfactual)),
-        "figure": str(paths["figures"] / "figure5_computational_application_case.png"),
+        "figure": str(
+            paths["figures"] / "figure5_auditable_virtual_screening_validation.png"
+        ),
         "reference_cell_figure": str(
-            paths["figures"] / "figure6_reference_cell_scenario.png"
+            paths["figures"] / "figure6_reference_cell_scenario_audited.png"
         ),
         "tables": str(paths["tables"]),
         "report": str(paths["report"] / "computational_application_case_results.md"),
@@ -371,7 +368,9 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "reproducible_commands": {
             "tests": "python experiments/computational_application_case/scripts/run_unit_tests.py",
             "smoke": "python experiments/computational_application_case/run_all.py --config experiments/computational_application_case/configs/smoke_test.yaml --smoke-test --force",
-            "full": "python experiments/computational_application_case/run_all.py --config experiments/computational_application_case/configs/default.yaml --force",
+            "primary": "python experiments/computational_application_case/run_all.py --config experiments/computational_application_case/configs/auditable_virtual_screening.yaml --force --skip-figures --skip-report",
+            "protocols": "python experiments/computational_application_case/scripts/build_protocol_stability_outputs.py --force",
+            "figures_and_bootstrap": "python experiments/computational_application_case/scripts/build_refactored_application_case.py",
         },
     }
     write_json(summary, paths["report"] / "computational_application_case_summary.json")
@@ -405,9 +404,9 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 7. Conditional reference-cell scenario",
         "",
-        f"A transparent, fixed comparison scenario uses electrode area={_fmt(config['reference_cell']['electrode_area_cm2'])} cm^2, separator thickness={_fmt(config['reference_cell']['separator_thickness_um'])} micrometre, electrolyte volume={_fmt(config['reference_cell']['electrolyte_volume_mL'])} mL, nominal capacitance={_fmt(config['reference_cell']['nominal_capacitance_F'])} F, current={_fmt(config['reference_cell']['charge_discharge_current_A'])} A, and convective coefficient={_fmt(config['reference_cell']['convective_heat_transfer_coefficient_W_m2_K'])} W m^-2 K^-1. It computes the ideal electrolyte-path resistance, its RC contribution, I^2R heating, a series conduction-plus-convection thermal resistance, and a first-order lumped transient temperature rise. At each temperature, resistance and transient rise are compared with observed-reference q75/q95 values; these bands prioritize relative risk and are not safety limits.",
+        f"Only after the formal shortlist is fixed, a transparent 60-s constant-current scenario uses electrode area={_fmt(config['reference_cell']['electrode_area_cm2'])} cm^2, separator thickness={_fmt(config['reference_cell']['separator_thickness_um'])} micrometre, electrolyte volume={_fmt(config['reference_cell']['electrolyte_volume_mL'])} mL, current={_fmt(config['reference_cell']['charge_discharge_current_A'])} A, and convective coefficient={_fmt(config['reference_cell']['convective_heat_transfer_coefficient_W_m2_K'])} W m^-2 K^-1. It computes ideal electrolyte-path resistance, I^2R heating, a series conduction-plus-convection thermal resistance, and a first-order 60-s lumped temperature rise. At each primary-window temperature, resistance and transient rise are divided by their temperature-matched observed-reference q75 values; the maximum component ratio is Xi_max, a reference-population exceedance index rather than a safety, failure, or thermal-runaway risk.",
         "",
-        "The nominal capacitance is an imposed scenario parameter, not a MIPGraph prediction. The calculation excludes electrode/contact resistance, current collectors, packaging, leakage, reaction heat, temperature-dependent geometry, phase changes, and electrochemical degradation. Liquid phase is assumed but not verified.",
+        "The calculation excludes capacitance, electrode/contact resistance, current collectors, packaging, leakage, reaction heat, temperature-dependent geometry, phase changes, and electrochemical degradation. Liquid phase is assumed but not verified.",
         "",
         "## 8. Applicability-domain analysis",
         "",
@@ -415,11 +414,11 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 9. Whole-temperature-window screening",
         "",
-        f"Observed-reference thresholds were frozen before unseen-candidate screening: conductivity >= {_fmt(threshold_payload.get('conductivity_min'))} S m^-1, viscosity <= {_fmt(threshold_payload.get('viscosity_max'))} Pa s, volumetric heat capacity >= {_fmt(threshold_payload.get('volumetric_heat_capacity_min'))} J m^-3 K^-1, thermal diffusivity >= {_fmt(threshold_payload.get('thermal_diffusivity_min'))} m^2 s^-1, and interfacial-window deviation <= {_fmt(threshold_payload.get('interfacial_deviation_max'))} reference IQR. Complete main-window coverage, curve quality, and allowed AD status are independent fail-closed gates.",
+        f"Observed-reference thresholds were frozen before unseen-candidate screening: conductivity >= {_fmt(threshold_payload.get('conductivity_min'))} S m^-1, viscosity <= {_fmt(threshold_payload.get('viscosity_max'))} Pa s, volumetric heat capacity >= {_fmt(threshold_payload.get('volumetric_heat_capacity_min'))} J m^-3 K^-1, thermal diffusivity >= {_fmt(threshold_payload.get('thermal_diffusivity_min'))} m^2 s^-1, and surface-tension reference-envelope deviation <= {_fmt(threshold_payload.get('surface_tension_reference_envelope_deviation_max'))} reference IQR. Complete main-window coverage, curve quality, and allowed AD status are independent fail-closed gates.",
         "",
         "## 10. Pareto analysis",
         "",
-        f"Among hard-feasible unseen pairs, {pareto.get('pareto_rank_1', 0)} were non-dominated under the declared conductivity, viscosity, heat-capacity, thermal-diffusivity, interfacial, and conditional reference-cell risk objectives. Utopia distance is used only for ordering within this transparent multi-objective result, not as a substitute for hard feasibility.",
+        f"Among hard-feasible unseen pairs, {pareto.get('pareto_rank_1', 0)} were non-dominated under exactly four objectives: maximize worst-window conductivity, minimize worst-window viscosity, maximize worst-window volumetric heat capacity, and maximize worst-window thermal diffusivity. The surface-tension reference envelope, applicability domain, and curve quality remain hard constraints. Reference-cell resistance, temperature rise, and Xi_max do not enter hard screening, Pareto sorting, Top-8 selection, or role selection; they are calculated only after the shortlist is fixed.",
         "",
         "## 11. Prioritized candidate classes",
         "",
@@ -431,7 +430,7 @@ def generate_report(paths: dict[str, Path], config: dict[str, Any]) -> dict[str,
         "",
         "## 13. Limitations",
         "",
-        ("At least three compatible checkpoints were propagated through property, proxy, hard-constraint, and Pareto calculations; ensemble spread still captures model variation only. " if uncertainty_available else "The selected checkpoint supplies point predictions only, so uncertainty is explicitly marked unavailable rather than synthesized. ") + "The conditional cell metrics are scenario calculations rather than device predictions: only the ideal electrolyte path is represented, while capacitance and heat-transfer geometry are fixed assumptions. The candidates are unseen ion-pair recombinations, but their component ions are deliberately supported by the training split and feature cache. Descriptor AD, family support, and temperature coverage cannot establish phase stability, purity effects, long-term electrochemical behavior, synthesis accessibility, or process-scale safety.",
+        ("At least three compatible checkpoints were propagated through property, proxy, hard-constraint, and Pareto calculations; ensemble spread still captures model variation only. " if uncertainty_available else "The selected checkpoint supplies point predictions only, so uncertainty is explicitly marked unavailable rather than synthesized. ") + "The conditional cell metrics are scenario calculations rather than device predictions: only the ideal electrolyte path and a fixed heat-transfer geometry are represented. The candidates are unseen ion-pair recombinations, but their component ions are deliberately supported by the training split and feature cache. Descriptor AD, family support, and temperature coverage cannot establish phase stability, purity effects, long-term electrochemical behavior, synthesis accessibility, or process-scale safety.",
         "",
         "## 14. Recommended downstream qualification",
         "",

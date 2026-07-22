@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from experiments.computational_application_case.src.proxies import (
-    interfacial_window_deviation,
+    surface_tension_reference_envelope_deviation,
     log_iqr_standardize,
     summarize_whole_temperature_window,
     transport_favorability,
@@ -35,10 +35,10 @@ def test_zero_iqr_uses_numerical_protection_and_reports_it() -> None:
     assert protected
 
 
-def test_interfacial_window_deviation_is_zero_inside_and_scaled_outside() -> None:
-    assert interfacial_window_deviation(30.0, 20.0, 40.0, 10.0, 1.0e-12) == 0.0
-    assert interfacial_window_deviation(15.0, 20.0, 40.0, 10.0, 1.0e-12) == pytest.approx(0.5)
-    assert interfacial_window_deviation(50.0, 20.0, 40.0, 10.0, 1.0e-12) == pytest.approx(1.0)
+def test_surface_tension_reference_envelope_deviation_is_scaled() -> None:
+    assert surface_tension_reference_envelope_deviation(30.0, 20.0, 40.0, 10.0, 1.0e-12) == 0.0
+    assert surface_tension_reference_envelope_deviation(15.0, 20.0, 40.0, 10.0, 1.0e-12) == pytest.approx(0.5)
+    assert surface_tension_reference_envelope_deviation(50.0, 20.0, 40.0, 10.0, 1.0e-12) == pytest.approx(1.0)
 
 
 def test_transport_favorability_subtracts_viscosity_penalty() -> None:
@@ -65,7 +65,7 @@ def test_whole_window_summary_uses_required_worst_case_directions() -> None:
             "volumetric_heat_capacity": [2.0e6, 1.9e6, 1.8e6],
             "thermal_diffusivity": [1.0e-7, 1.1e-7, 1.2e-7],
             "simplified_thermal_diffusion_timescale": [10.0, 9.0, 8.0],
-            "interfacial_window_deviation": [0.1, 0.2, 0.3],
+            "surface_tension_reference_envelope_deviation": [0.1, 0.2, 0.3],
             "Density": [1200.0, 1180.0, 1160.0],
         }
     )
@@ -75,7 +75,7 @@ def test_whole_window_summary_uses_required_worst_case_directions() -> None:
     assert summary["volumetric_heat_capacity_worst"] == 1.8e6
     assert summary["thermal_diffusivity_worst"] == 1.0e-7
     assert summary["thermal_timescale_worst"] == 10.0
-    assert summary["interfacial_deviation_worst"] == 0.3
+    assert summary["surface_tension_reference_envelope_deviation_worst"] == 0.3
     assert summary["density_range"] == 40.0
     assert summary["conductivity_worst_temperature_K"] == 298.15
     assert summary["viscosity_worst_temperature_K"] == 298.15
@@ -100,7 +100,7 @@ def test_whole_window_summary_marks_incomplete_candidate_grid() -> None:
             "volumetric_heat_capacity": [2.0e6] * 3,
             "thermal_diffusivity": [1.0e-7] * 3,
             "simplified_thermal_diffusion_timescale": [10.0] * 3,
-            "interfacial_window_deviation": [0.0] * 3,
+            "surface_tension_reference_envelope_deviation": [0.0] * 3,
             "Density": [1200.0] * 3,
         }
     )
@@ -119,7 +119,7 @@ def test_screening_fails_closed_for_missing_summary_or_ad() -> None:
             "viscosity_worst": [0.1],
             "volumetric_heat_capacity_worst": [2.0e6],
             "thermal_diffusivity_worst": [1.0e-7],
-            "interfacial_deviation_worst": [0.0],
+            "surface_tension_reference_envelope_deviation_worst": [0.0],
             "severe_curve_failure_count": [0],
         }
     )
@@ -144,7 +144,7 @@ def test_screening_fails_closed_for_missing_summary_or_ad() -> None:
         "viscosity_max": 1.0,
         "volumetric_heat_capacity_min": 1.0e6,
         "thermal_diffusivity_min": 1.0e-8,
-        "interfacial_deviation_max": 1.0,
+        "surface_tension_reference_envelope_deviation_max": 1.0,
     }
     result = screen_candidates(robust, ad, library, thresholds, {}).set_index(
         "candidate_id"

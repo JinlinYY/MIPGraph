@@ -113,7 +113,6 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
         "electrode_area_cm2",
         "separator_thickness_um",
         "electrolyte_volume_mL",
-        "nominal_capacitance_F",
         "charge_discharge_current_A",
         "convective_heat_transfer_coefficient_W_m2_K",
         "exposed_face_count",
@@ -125,14 +124,14 @@ def validate_config(config: dict[str, Any], root: Path) -> dict[str, Any]:
             raise ValueError(f"reference_cell.{key} must be finite and positive")
         if key == "exposed_face_count" and not value.is_integer():
             raise ValueError("reference_cell.exposed_face_count must be an integer")
-    risk_quantiles = list(
-        config["reference_cell"].get("risk_reference_quantiles", [])
+    exceedance_quantiles = list(
+        config["reference_cell"].get("exceedance_reference_quantiles", [])
     )
-    if len(risk_quantiles) != 2 or not np.allclose(
-        risk_quantiles, [0.75, 0.95], rtol=0.0, atol=1.0e-12
+    if len(exceedance_quantiles) != 2 or not np.allclose(
+        exceedance_quantiles, [0.75, 0.95], rtol=0.0, atol=1.0e-12
     ):
         raise ValueError(
-            "reference_cell.risk_reference_quantiles must be exactly [0.75, 0.95]"
+            "reference_cell.exceedance_reference_quantiles must be exactly [0.75, 0.95]"
         )
     reference_temperature = float(config["reference_cell"]["reference_temperature_K"])
     if not np.isclose(temperature_grid(config["conditions"]), reference_temperature).any():

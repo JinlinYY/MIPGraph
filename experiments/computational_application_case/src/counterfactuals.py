@@ -19,7 +19,7 @@ COMPARISON_METRICS = [
     "volumetric_heat_capacity",
     "thermal_diffusivity",
     "simplified_thermal_diffusion_timescale",
-    "interfacial_window_deviation",
+    "surface_tension_reference_envelope_deviation",
 ]
 
 
@@ -29,6 +29,16 @@ def analyze_counterfactual_substitutions(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Compare inferred pairs sharing exactly one canonical ion."""
 
+    cation_key = (
+        "cation_identity_key"
+        if "cation_identity_key" in proxy_table.columns
+        else "canonical_cation_smiles"
+    )
+    anion_key = (
+        "anion_identity_key"
+        if "anion_identity_key" in proxy_table.columns
+        else "canonical_anion_smiles"
+    )
     required = {
         "candidate_id",
         "candidate_type",
@@ -47,13 +57,13 @@ def analyze_counterfactual_substitutions(
         ].drop_duplicates("candidate_id")
         for shared_column, replaced_column, substitution_type in [
             (
-                "canonical_cation_smiles",
-                "canonical_anion_smiles",
+                cation_key,
+                anion_key,
                 "fixed_cation_replace_anion",
             ),
             (
-                "canonical_anion_smiles",
-                "canonical_cation_smiles",
+                anion_key,
+                cation_key,
                 "fixed_anion_replace_cation",
             ),
         ]:
@@ -111,4 +121,3 @@ def analyze_counterfactual_substitutions(
         "Mean shifts are associations from matched model predictions, not causal mechanisms."
     )
     return comparisons, summary
-

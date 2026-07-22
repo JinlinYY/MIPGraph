@@ -83,7 +83,14 @@ def add_utopia_distance(
     ranked_candidates: pd.DataFrame,
     objectives: Mapping[str, Sequence[str]],
 ) -> pd.DataFrame:
-    """Add min-max rank-one distance to the all-objective utopia point."""
+    """Add deterministic robust-normalized rank-one distance to the utopia point.
+
+    Each objective is scaled between its rank-one 5th and 95th percentiles and
+    clipped to [0, 1].  This preserves objective directions while limiting the
+    leverage of a single extreme candidate.  Equal distances are resolved by
+    descriptor AD distance, cation support, anion support, and canonical pair
+    identity, in that order.
+    """
 
     columns, direction = _objective_columns(objectives)
     output = ranked_candidates.copy().reset_index(drop=True)
@@ -91,6 +98,8 @@ def add_utopia_distance(
         raise ValueError("Pareto_rank is required before utopia-distance calculation")
     output["utopia_distance"] = np.nan
     output["utopia_rank_one_order"] = pd.Series([pd.NA] * len(output), dtype="Int64")
+    for column in columns:
+        output[f"utopia_normalized_{column}"] = np.nan
     if output.empty:
         return output
     rank_one_indices = output.index[output["Pareto_rank"].eq(1)].to_numpy(dtype=int)
@@ -102,21 +111,37 @@ def add_utopia_distance(
     normalized = np.ones_like(raw, dtype=float)
     for column_index, sense in enumerate(direction):
         values = raw[:, column_index]
-        low = float(np.min(values))
-        high = float(np.max(values))
+        low = float(np.quantile(values, 0.05))
+        high = float(np.quantile(values, 0.95))
         if np.isclose(high, low, rtol=0.0, atol=1.0e-15):
             normalized[:, column_index] = 1.0
         elif sense > 0:
-            normalized[:, column_index] = (values - low) / (high - low)
+            normalized[:, column_index] = np.clip((values - low) / (high - low), 0.0, 1.0)
         else:
-            normalized[:, column_index] = (high - values) / (high - low)
+            normalized[:, column_index] = np.clip((high - values) / (high - low), 0.0, 1.0)
+        output.loc[rank_one_indices, f"utopia_normalized_{columns[column_index]}"] = normalized[:, column_index]
     distances = np.sqrt(np.mean((1.0 - normalized) ** 2, axis=1))
     output.loc[rank_one_indices, "utopia_distance"] = distances
+    def tie_value(index: int, column: str, default: float) -> float:
+        if column not in output:
+            return default
+        value = pd.to_numeric(output.at[index, column], errors="coerce")
+        return float(value) if np.isfinite(value) else default
+
     ordered = sorted(
         zip(rank_one_indices.tolist(), distances.tolist()),
-        key=lambda item: (item[1], item[0]),
+        key=lambda item: (
+            item[1],
+            tie_value(item[0], "descriptor_knn_distance", float("inf")),
+            -tie_value(item[0], "cation_support_count", -float("inf")),
+            -tie_value(item[0], "anion_support_count", -float("inf")),
+            str(output.at[item[0], "canonical_il_key"])
+            if "canonical_il_key" in output
+            else str(output.at[item[0], "candidate_id"])
+            if "candidate_id" in output
+            else str(item[0]),
+        ),
     )
     for order, (index, _) in enumerate(ordered, start=1):
         output.at[index, "utopia_rank_one_order"] = order
     return output
-
