@@ -162,6 +162,38 @@ Do not manually combine caches generated from different checkpoints.
 
 ## Results
 
+### Manuscript-facing consolidated figure
+
+The main-text result is the integrated six-panel figure:
+
+```text
+results/figures/figure_main_molecular_origin_analysis.png
+results/figures/figure_main_molecular_origin_analysis.pdf
+results/figures/figure_main_molecular_origin_analysis.svg
+results/figures/figure_main_molecular_origin_analysis.tiff
+```
+
+Panels a–f respectively report the strongest evidence-gated association per
+property, the condition-controlled association matrix, observed response
+curves, matched-pair and counterfactual evidence, shared-attention diagnostics,
+and the post hoc connection to the unchanged Top-8. The original standalone
+Figures A–F remain available as auditable component views; they are not
+required as six separate main-text figures.
+
+Each composite panel has an independent source-data CSV under
+`results/tables/figure_source_data/`. The figure contract and export audit are
+stored in `results/reports/composite_figure_contract.md` and
+`results/reports/composite_figure_qa.md`.
+
+The manuscript-ready analysis and captions are:
+
+```text
+results/manuscript/molecular_origin_results_section_en.tex
+results/manuscript/molecular_origin_results_section_zh.tex
+results/manuscript/composite_figure_caption_en.tex
+results/manuscript/composite_figure_caption_zh.tex
+```
+
 Key tables:
 
 - `feature_property_associations.csv`;
@@ -179,9 +211,10 @@ Key tables:
 - `candidate_structural_profiles.csv`;
 - `candidate_rule_consistency.csv`.
 
-Figures A–F are exported as 600-dpi PNG and vector PDF/SVG. Each figure has an
-exact CSV source table in `results/tables/figure_source_data/`. Reproduce only
-the figures, without rerunning inference, with:
+Standalone Figures A–F are exported as 600-dpi PNG and vector PDF/SVG. The
+consolidated figure additionally includes a 600-dpi TIFF. Every quantitative
+panel has a CSV source table in `results/tables/figure_source_data/`. Reproduce
+only the figures, without rerunning inference, with:
 
 ```powershell
 python experiments\molecular_origin_analysis\run_all.py --stage figures --force
