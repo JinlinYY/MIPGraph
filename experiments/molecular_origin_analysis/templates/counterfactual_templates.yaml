@@ -1,0 +1,49 @@
+series:
+  - template_id: imidazolium_alkyl_homologs
+    modification_type: cation alkyl-chain homologation
+    cations:
+      - {label: C1, smiles: "C[n+]1ccn(C)c1"}
+      - {label: C2, smiles: "CC[n+]1ccn(C)c1"}
+      - {label: C4, smiles: "CCCC[n+]1ccn(C)c1"}
+      - {label: C6, smiles: "CCCCCC[n+]1ccn(C)c1"}
+    anions:
+      - {label: BF4, smiles: "[B-](F)(F)(F)F"}
+      - {label: PF6, smiles: "[P-](F)(F)(F)(F)(F)F"}
+      - {label: acetate, smiles: "CC(=O)[O-]"}
+
+  - template_id: pyridinium_alkyl_homologs
+    modification_type: cation alkyl-chain homologation
+    cations:
+      - {label: C1, smiles: "C[n+]1ccccc1"}
+      - {label: C2, smiles: "CC[n+]1ccccc1"}
+      - {label: C4, smiles: "CCCC[n+]1ccccc1"}
+    anions:
+      - {label: BF4, smiles: "[B-](F)(F)(F)F"}
+      - {label: acetate, smiles: "CC(=O)[O-]"}
+
+  - template_id: ammonium_functionalization
+    modification_type: cation functional-group substitution
+    cations:
+      - {label: tetramethyl, smiles: "C[N+](C)(C)C"}
+      - {label: tetraethyl, smiles: "CC[N+](CC)(CC)CC"}
+      - {label: hydroxyethyl, smiles: "OCC[N+](C)(C)C"}
+      - {label: methoxyethyl, smiles: "COCC[N+](C)(C)C"}
+    anions:
+      - {label: chloride, smiles: "[Cl-]"}
+      - {label: BF4, smiles: "[B-](F)(F)(F)F"}
+
+  - template_id: carboxylate_chain_series
+    modification_type: anion alkyl-chain homologation
+    cations:
+      - {label: BMIM, smiles: "CCCC[n+]1ccn(C)c1"}
+    anions:
+      - {label: formate, smiles: "O=C[O-]"}
+      - {label: acetate, smiles: "CC(=O)[O-]"}
+      - {label: propionate, smiles: "CCC(=O)[O-]"}
+      - {label: butyrate, smiles: "CCCC(=O)[O-]"}
+
+records:
+  - template_id: controlled_anion_substitution
+    modification_type: anion substitution
+    cation_smiles: "CCCC[n+]1ccn(C)c1"
+    anion_smiles: "O=S(=O)([N-]S(=O)(=O)C(F)(F)F)C(F)(F)F"

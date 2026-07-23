@@ -1,0 +1,79 @@
+project:
+  root: "D:/GGNN/IL-model/Sparse-Label-Prediction"
+  output_root: "D:/GGNN/IL-model/Sparse-Label-Prediction/experiments/molecular_origin_analysis/results"
+
+model:
+  checkpoint: "auto"
+  primary_checkpoint_type: "random_il"
+  device: "auto"
+  batch_size: 32
+  num_workers: 0
+  seed: 42
+
+data:
+  split: "test"
+  include_train_for_reference: true
+  use_original_labels_only: true
+  max_samples: 0
+
+properties:
+  - density
+  - electrical_conductivity
+  - heat_capacity
+  - surface_tension
+  - thermal_conductivity
+  - viscosity
+
+conditions:
+  reference_pressure_kpa: 101.325
+  reference_temperatures_k: [298.15, 323.15, 348.15]
+  primary_temperature_k: 298.15
+  temperature_tolerance_k: 2.0
+
+statistics:
+  bootstrap_repeats: 500
+  confidence_level: 0.95
+  fdr_alpha: 0.05
+  min_group_size: 20
+  top_features_per_property: 15
+  random_seed: 42
+
+attribution:
+  permutation_repeats: 20
+  integrated_gradients_steps: 32
+  shap_enabled: true
+  shap_background_size: 128
+  shap_evaluation_size: 512
+  maximum_samples: 512
+
+attention:
+  aggregate_heads: "mean"
+  normalize_within_sample: true
+  minimum_samples_per_group: 20
+  property_conditioning: "attention_times_gradient"
+
+counterfactual:
+  use_dataset_matched_pairs: true
+  use_virtual_templates: true
+  template_path: "templates/counterfactual_templates.yaml"
+  require_rdkit_validity: true
+  require_charge_neutrality: true
+  exclude_out_of_domain: true
+  temperatures_k: [298.15, 323.15, 348.15]
+
+applicability_domain:
+  descriptor_knn_k: 5
+  in_domain_quantile: 0.90
+  borderline_quantile: 0.95
+
+figures:
+  dpi: 600
+  formats: [png, pdf, svg]
+  font_family: "Arial"
+  single_column_width_in: 3.5
+  double_column_width_in: 7.2
+
+runtime:
+  cache_enabled: true
+  continue_on_optional_failure: true
+  force: false
