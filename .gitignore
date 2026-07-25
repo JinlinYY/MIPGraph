@@ -73,6 +73,10 @@ experiments/**/tmp/
 *.docx
 *.pptx
 
+# Manuscript source-data bundles are intentional versioned deliverables.
+!experiments/manuscript_figure_source_data/molecular_origin_analysis/
+!experiments/manuscript_figure_source_data/molecular_origin_analysis/**
+
 # OS metadata
 Thumbs.db
 .DS_Store

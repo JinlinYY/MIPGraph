@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 
 from experiments.molecular_origin_analysis.src.project_adapter import ProjectAdapter
-from experiments.molecular_origin_analysis.src.utils import load_config
+from experiments.molecular_origin_analysis.src.utils import load_config, resolve_path
 
 
 EXPECTED_PROPERTIES = [
@@ -27,7 +27,14 @@ def test_discovery_finds_real_model_data_and_checkpoint_without_mutation(
     config_path: Path,
 ) -> None:
     config = load_config(config_path)
-    protected = Path(config["project"]["root"]) / "il_property_prediction" / "src" / "models" / "mipgraph.py"
+    project_root = resolve_path(config["project"]["root"], config["_module_root"])
+    protected = (
+        project_root
+        / "il_property_prediction"
+        / "src"
+        / "models"
+        / "mipgraph.py"
+    )
     before = _digest(protected)
 
     report = ProjectAdapter(config).inspect()

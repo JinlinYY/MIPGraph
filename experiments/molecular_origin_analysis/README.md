@@ -15,9 +15,10 @@ The workflow keeps three evidence classes separate:
    charge-balanced ion-pair structures, qualified by an applicability-domain
    check.
 
-Agreement among these classes can support a prioritization hypothesis, but it
-does not establish causality, interaction energy, liquid-state persistence, or
-electrochemical performance.
+Agreement among these classes can support a qualitative structural prior before
+full property inference, but it does not establish causality, interaction
+energy, liquid-state persistence, electrolyte suitability, or electrochemical
+performance.
 
 ## Relationship to the original project
 
@@ -37,20 +38,13 @@ checkpoint stability is reported as not assessable.
 
 ```text
 molecular_origin_analysis/
-├── config/                  # analysis configuration
-├── scripts/                 # stage-specific command-line entrypoints
-├── src/                     # adapters and analysis implementations
-├── templates/               # real-SMILES counterfactual definitions
-├── tests/                   # adapter, cache, chemistry, and smoke tests
-├── results/
-│   ├── cache/               # aligned predictions and intermediate tensors
-│   ├── tables/              # analysis tables and figure source data
-│   ├── figures/             # PNG, PDF, and SVG figures
-│   ├── logs/                # timestamped pipeline log
-│   ├── reports/             # inspection, provenance, and audit reports
-│   └── manuscript/          # independent writing suggestions
-├── requirements_extra.txt
-└── run_all.py
+|-- config/                  # analysis configuration
+|-- src/                     # adapters and analysis implementations
+|-- templates/               # real-SMILES counterfactual definitions
+|-- tests/                   # adapter, cache, chemistry, and smoke tests
+|-- requirements_extra.txt
+|-- run_all.py               # only analysis entrypoint
+`-- package_source_data.py   # package final figures and panel CSVs
 ```
 
 ## Environment
@@ -100,8 +94,8 @@ python experiments\molecular_origin_analysis\run_all.py `
   --set data.split=test --set data.max_samples=32
 ```
 
-`--set SECTION.KEY=VALUE` may be repeated and is supported by the unified and
-stage-specific commands.
+`--set SECTION.KEY=VALUE` may be repeated. The default project and output paths
+are repository-relative, so the configuration is portable across machines.
 
 ## Running on Windows
 
@@ -126,13 +120,6 @@ python experiments\molecular_origin_analysis\run_all.py --stage rules
 python experiments\molecular_origin_analysis\run_all.py --stage figures
 python experiments\molecular_origin_analysis\run_all.py --stage manuscript
 python experiments\molecular_origin_analysis\run_all.py --stage validate
-```
-
-Equivalent wrappers are available in `scripts/`, for example:
-
-```powershell
-python experiments\molecular_origin_analysis\scripts\extract_model_outputs.py `
-  --config experiments\molecular_origin_analysis\config\analysis_config.yaml
 ```
 
 Use `--force` after changing a checkpoint or an upstream analysis setting.
@@ -164,21 +151,26 @@ Do not manually combine caches generated from different checkpoints.
 
 ### Manuscript-facing consolidated figure
 
-The main-text result is the integrated six-panel figure:
+The main-text result is the integrated four-panel figure:
 
 ```text
-results/figures/figure_main_molecular_origin_analysis.png
-results/figures/figure_main_molecular_origin_analysis.pdf
-results/figures/figure_main_molecular_origin_analysis.svg
-results/figures/figure_main_molecular_origin_analysis.tiff
+results/figures/figure_main_molecular_origin_analysis_final.png
+results/figures/figure_main_molecular_origin_analysis_final.pdf
+results/figures/figure_main_molecular_origin_analysis_final.svg
+results/figures/figure_main_molecular_origin_analysis_final.tiff
 ```
 
-Panels a–f respectively report the strongest evidence-gated association per
-property, the condition-controlled association matrix, observed response
-curves, matched-pair and counterfactual evidence, shared-attention diagnostics,
-and the post hoc connection to the unchanged Top-8. The original standalone
-Figures A–F remain available as auditable component views; they are not
-required as six separate main-text figures.
+Panels a–d respectively report an integrated hero map that combines the three
+highest-confidence structural associations and three largest cross-ion
+attention contrasts per property, the condition-controlled ion-level
+association-dominance plot, a right-hand 3 × 2 response-shape atlas containing
+three deterministically ranked curve-supported factors per property, and a
+compact condition-matched ion-substitution effect-distribution
+forest stacked below panel b in the left evidence column. The original
+standalone Figures
+A–F remain available as auditable component views; they are not required as six
+separate main-text figures. This figure contains no candidate ranking or
+screening result.
 
 Each composite panel has an independent source-data CSV under
 `results/tables/figure_source_data/`. The figure contract and export audit are
@@ -207,18 +199,27 @@ Key tables:
 - `counterfactual_predictions.csv`;
 - `observed_test_applicability_domain.csv`;
 - `design_rule_summary.csv`;
-- `unsupported_hypotheses.csv`;
-- `candidate_structural_profiles.csv`;
-- `candidate_rule_consistency.csv`.
+- `unsupported_hypotheses.csv`.
 
-Standalone Figures A–F are exported as 600-dpi PNG and vector PDF/SVG. The
-consolidated figure additionally includes a 600-dpi TIFF. Every quantitative
-panel has a CSV source table in `results/tables/figure_source_data/`. Reproduce
-only the figures, without rerunning inference, with:
+The consolidated figure and SI control figure are exported as raster PNG and
+vector PDF/SVG. Every quantitative panel has a CSV source table in
+`results/tables/figure_source_data/`. Reproduce only the figures, without
+rerunning inference, with:
 
 ```powershell
 python experiments\molecular_origin_analysis\run_all.py --stage figures --force
 ```
+
+Package only the manuscript-facing figures and exact plotted CSVs into the
+repository-level source-data directory:
+
+```powershell
+python experiments\molecular_origin_analysis\package_source_data.py
+```
+
+The resulting bundle is
+`experiments/manuscript_figure_source_data/molecular_origin_analysis/` and
+contains a SHA-256 manifest, column dictionary and figure-to-panel data map.
 
 The independent manuscript materials and captions are in
 `results/manuscript/`; no existing LaTeX or manuscript file is edited.
@@ -308,8 +309,8 @@ unit suite uses bounded seams and temporary directories.
   interaction energies.
 - Counterfactual tables describe conditional model responses for valid
   structures within or near the descriptor reference domain.
-- Candidate analyses are post hoc. They do not alter hard constraints,
-  Pareto ranks, the formal Top-8, or qualification roles.
+- The manuscript-facing figure and text contain no candidate screening,
+  Pareto ranking, shortlist, or qualification-role analysis.
 - No output validates capacitance, energy density, cycling, electrochemical
   stability, safety, or wide-temperature operation.
 

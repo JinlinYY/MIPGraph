@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 import tempfile
 
-import numpy as np
 import pandas as pd
 
 from experiments.molecular_origin_analysis.src.plotting import (
@@ -48,7 +47,7 @@ def test_evidence_map_represents_every_property(config_path, module_root) -> Non
         assert source.groupby("property").size().eq(4).all()
 
 
-def test_composite_figure_exports_six_traceable_panels(
+def test_composite_figure_exports_four_traceable_panels(
     config_path,
     module_root,
 ) -> None:
@@ -59,15 +58,23 @@ def test_composite_figure_exports_six_traceable_panels(
         [
             {
                 "property": property_name,
-                "structural_factor": f"factor_{index}",
-                "effect_direction": "positive" if index % 2 == 0 else "negative",
-                "confidence_level": "Level B",
-                "family_consistency": 0.8,
-                "statistical_evidence": (
-                    f"partial r={0.2 + 0.05 * index:.3f}; q=1e-4"
+                "structural_factor": f"factor_{index}_{rank}",
+                "effect_direction": (
+                    "positive" if (index + rank) % 2 == 0 else "negative"
                 ),
-            }
+                "confidence_level": "Level B",
+                "family_consistency": 0.8 - 0.05 * rank,
+                    "statistical_evidence": (
+                        f"partial r="
+                        f"{(-1 if (index + rank) % 2 else 1) * (0.2 + 0.05 * index + 0.02 * rank):.3f}; "
+                        "q=1e-4"
+                    ),
+                    "attribution_evidence": (
+                        f"direct gradient×input rank={rank + 1}"
+                    ),
+                }
             for index, property_name in enumerate(PROPERTY_ORDER)
+            for rank in range(3)
         ]
     )
     association_records = []
@@ -89,7 +96,7 @@ def test_composite_figure_exports_six_traceable_panels(
         [
             {
                 "property": property_name,
-                "feature": f"response_factor_{property_index}",
+                "feature": f"factor_{property_index}_2",
                 "monotonic_bin_spearman": 0.9,
                 "feature_mean": float(bin_index),
                 "response_log_mean": 1.0 + 0.1 * bin_index,
@@ -98,22 +105,6 @@ def test_composite_figure_exports_six_traceable_panels(
             }
             for property_index, property_name in enumerate(PROPERTY_ORDER)
             for bin_index in range(3)
-        ]
-    )
-    temperatures = [298.15, 323.15, 348.15]
-    predictions = pd.DataFrame(
-        [
-            {
-                "candidate_id": f"CF-{candidate_index:04d}",
-                "temperature_K": temperature,
-                "Viscosity": np.exp(2.0 - 0.01 * (temperature - 298.15)),
-                "ElectricalConductivity": np.exp(
-                    -1.0 + 0.01 * (temperature - 298.15)
-                ),
-                "AD_status": "in_domain",
-            }
-            for candidate_index in range(3)
-            for temperature in temperatures
         ]
     )
     matched_pairs = pd.DataFrame(
@@ -145,20 +136,6 @@ def test_composite_figure_exports_six_traceable_panels(
             for property_index, property_name in enumerate(PROPERTY_ORDER)
         ]
     )
-    trajectory = pd.DataFrame(
-        [
-            {
-                "candidate_id": f"UPR-{index:04d}",
-                "viscosity_worst": 0.01 * (index + 1),
-                "conductivity_worst": 0.1 * (index + 1),
-                "thermal_diffusivity_worst": 1e-7 * (1 + 0.02 * index),
-                "volumetric_heat_capacity_worst": 1e6 * (1 + 0.03 * index),
-            }
-            for index in range(10)
-        ]
-    )
-    top8 = trajectory.head(8)[["candidate_id"]].copy()
-
     with tempfile.TemporaryDirectory(
         prefix="composite_",
         dir=module_root,
@@ -168,11 +145,8 @@ def test_composite_figure_exports_six_traceable_panels(
             rules,
             associations,
             nonlinear,
-            predictions,
             matched_pairs,
             contrasts,
-            trajectory,
-            top8,
             stem,
         )
         source_root = Path(directory) / "tables" / "figure_source_data"
@@ -181,5 +155,54 @@ def test_composite_figure_exports_six_traceable_panels(
         assert all(path.is_file() for path in outputs)
         assert all(
             (source_root / f"composite_panel_{panel}_source_data.csv").is_file()
-            for panel in "abcdef"
+            for panel in "abcd"
         )
+        panel_a = pd.read_csv(
+            source_root / "composite_panel_a_source_data.csv"
+        )
+        assert set(panel_a["evidence_family"]) == {
+            "condition_controlled_association",
+            "cross_ion_attention_contrast",
+        }
+        association_a = panel_a.loc[
+            panel_a["evidence_family"]
+            == "condition_controlled_association"
+        ]
+        attention_a = panel_a.loc[
+            panel_a["evidence_family"]
+            == "cross_ion_attention_contrast"
+        ]
+        assert association_a.groupby("property").size().eq(3).all()
+        assert attention_a.groupby("property").size().eq(3).all()
+        assert panel_a["line_width_pt"].nunique() > 1
+        assert association_a["selection_rule"].str.contains(
+            "top three Level A/B links"
+        ).all()
+        panel_c = pd.read_csv(
+            source_root / "composite_panel_c_source_data.csv"
+        )
+        assert "response_log_centered" in panel_c
+        centered_means = panel_c.groupby(
+            ["property", "feature"]
+        )["response_log_centered"].mean()
+        assert centered_means.abs().lt(1e-10).all()
+        assert set(panel_c["structural_scope"]).issubset(
+            {"Cation", "Anion", "Ion pair"}
+        )
+        assert panel_c["plot_color_hex"].notna().all()
+        assert panel_c["selection_rank"].between(1, 3).all()
+        assert {
+            "plot_line_style",
+            "plot_marker",
+            "confidence_level",
+            "selection_rule",
+        }.issubset(panel_c.columns)
+        assert panel_c.groupby("structural_scope")[
+            "plot_color_hex"
+        ].nunique().eq(1).all()
+        assert not (
+            source_root / "composite_panel_e_source_data.csv"
+        ).exists()
+        assert not (
+            source_root / "composite_panel_f_source_data.csv"
+        ).exists()

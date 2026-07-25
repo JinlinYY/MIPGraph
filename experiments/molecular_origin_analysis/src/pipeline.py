@@ -26,6 +26,7 @@ from .feature_extractor import (
 from .model_adapter import MECHANISM_NAMES, ModelAdapter
 from .plotting import PublicationPlotter
 from .project_adapter import InspectionReport, ProjectAdapter
+from .revision_analysis import IdentityBalancedStructurePropertyAnalyzer
 from .structure_property import StructurePropertyAnalyzer
 from .utils import (
     MODULE_ROOT,
@@ -396,6 +397,30 @@ are read only and candidate membership is never changed by this module.
             "robust_structure_property_factors": self.output_root
             / "tables"
             / "robust_structure_property_factors.csv",
+            "record_weighted_feature_property_associations": self.output_root
+            / "tables"
+            / "record_weighted_feature_property_associations.csv",
+            "record_weighted_vs_identity_balanced": self.output_root
+            / "tables"
+            / "record_weighted_vs_identity_balanced.csv",
+            "family_proxy_diagnostics": self.output_root
+            / "tables"
+            / "family_proxy_diagnostics.csv",
+            "identity_level_condition_adjusted_responses": self.output_root
+            / "tables"
+            / "identity_level_condition_adjusted_responses.csv",
+            "nonredundant_structural_themes": self.output_root
+            / "tables"
+            / "nonredundant_structural_themes.csv",
+            "heat_capacity_size_control": self.output_root
+            / "tables"
+            / "heat_capacity_size_control.csv",
+            "heat_capacity_size_control_identity_data": self.output_root
+            / "tables"
+            / "heat_capacity_size_control_identity_data.csv",
+            "property_data_support_counts": self.output_root
+            / "tables"
+            / "property_data_support_counts.csv",
         }
         upstream = [
             self.bundle_base.with_name(f"{self.bundle_base.name}_metadata.json")
@@ -413,13 +438,29 @@ are read only and candidate membership is never changed by this module.
                 "association", "cached", [str(path) for path in paths.values()]
             )
             return tables
-        result = StructurePropertyAnalyzer(self.config).run(self.load_bundle())
+        result = IdentityBalancedStructurePropertyAnalyzer(self.config).run(
+            self.load_bundle()
+        )
         tables = {
             "feature_property_associations": result.associations,
-            "partial_correlations": result.partial_correlations,
-            "family_stratified_associations": result.family_stratified,
-            "nonlinear_structure_property_trends": result.nonlinear_trends,
+            "partial_correlations": result.associations,
+            "family_stratified_associations": result.diagnostics,
+            "nonlinear_structure_property_trends": result.response_shapes,
             "robust_structure_property_factors": result.robust_factors,
+            "record_weighted_feature_property_associations": (
+                result.record_weighted_associations
+            ),
+            "record_weighted_vs_identity_balanced": result.comparison,
+            "family_proxy_diagnostics": result.diagnostics,
+            "identity_level_condition_adjusted_responses": (
+                result.identity_responses
+            ),
+            "nonredundant_structural_themes": result.structural_themes,
+            "heat_capacity_size_control": result.heat_capacity_size_control,
+            "heat_capacity_size_control_identity_data": (
+                result.heat_capacity_identity_data
+            ),
+            "property_data_support_counts": result.data_support,
         }
         for name, frame in tables.items():
             write_table(frame, paths[name])
@@ -512,11 +553,15 @@ are read only and candidate membership is never changed by this module.
             "high_low_property_interaction_contrasts": self.output_root
             / "tables"
             / "high_low_property_interaction_contrasts.csv",
+            "attention_family_stratified_contrasts": self.output_root
+            / "tables"
+            / "attention_family_stratified_contrasts.csv",
         }
         required_cache = [
             paths["cross_ion_interaction_statistics"],
             paths["family_interaction_profiles"],
             paths["high_low_property_interaction_contrasts"],
+            paths["attention_family_stratified_contrasts"],
         ]
         upstream = [
             self.bundle_base.with_name(f"{self.bundle_base.name}_metadata.json")
@@ -544,6 +589,9 @@ are read only and candidate membership is never changed by this module.
             "property_conditioned_interactions": result.property_conditioned_interactions,
             "family_interaction_profiles": result.family_interaction_profiles,
             "high_low_property_interaction_contrasts": result.high_low_property_contrasts,
+            "attention_family_stratified_contrasts": (
+                result.family_stratified_contrasts
+            ),
         }
         for name, frame in tables.items():
             if not frame.empty:
@@ -658,6 +706,18 @@ unavailable rather than replaced by shared attention.
             "cross_checkpoint_counterfactual_consistency": self.output_root
             / "tables"
             / "cross_checkpoint_counterfactual_consistency.csv",
+            "condition_matched_substitution_matches": self.output_root
+            / "tables"
+            / "condition_matched_substitution_matches.csv",
+            "condition_matched_substitution_pairs": self.output_root
+            / "tables"
+            / "condition_matched_substitution_pairs.csv",
+            "condition_matched_substitution_summary": self.output_root
+            / "tables"
+            / "condition_matched_substitution_summary.csv",
+            "signed_substitution_descriptors": self.output_root
+            / "tables"
+            / "signed_substitution_descriptors.csv",
         }
         required_cache = [
             paths["matched_molecular_pairs"],
@@ -665,6 +725,10 @@ unavailable rather than replaced by shared attention.
             paths["counterfactual_predictions"],
             paths["counterfactual_trend_summary"],
             paths["cross_checkpoint_counterfactual_consistency"],
+            paths["condition_matched_substitution_matches"],
+            paths["condition_matched_substitution_pairs"],
+            paths["condition_matched_substitution_summary"],
+            paths["signed_substitution_descriptors"],
         ]
         upstream = [
             self.bundle_base.with_name(f"{self.bundle_base.name}_metadata.json"),
@@ -697,6 +761,12 @@ unavailable rather than replaced by shared attention.
         )
         bundle = self.load_bundle()
         matched = generator.matched_pairs(bundle.records)
+        (
+            matched_conditions,
+            matched_unique_pairs,
+            matched_summary,
+            signed_substitutions,
+        ) = generator.summarize_matched_pairs(matched)
         adapter = ModelAdapter(self.config, self.inspection)
         predictions, failures = adapter.predict_ion_pairs(
             valid,
@@ -749,6 +819,10 @@ unavailable rather than replaced by shared attention.
             "counterfactual_predictions": predictions,
             "counterfactual_trend_summary": trend_summary,
             "cross_checkpoint_counterfactual_consistency": checkpoint_consistency,
+            "condition_matched_substitution_matches": matched_conditions,
+            "condition_matched_substitution_pairs": matched_unique_pairs,
+            "condition_matched_substitution_summary": matched_summary,
+            "signed_substitution_descriptors": signed_substitutions,
         }
         for name, frame in tables.items():
             if not frame.empty:
@@ -825,6 +899,9 @@ unavailable rather than replaced by shared attention.
             "candidate_rule_consistency": self.output_root
             / "tables"
             / "candidate_rule_consistency.csv",
+            "molecular_structure_property_evidence_table": self.output_root
+            / "tables"
+            / "molecular_structure_property_evidence_table.csv",
         }
         upstream = [
             self.output_root / "tables" / "robust_structure_property_factors.csv",
@@ -855,6 +932,16 @@ unavailable rather than replaced by shared attention.
         )
         counter_path = self.output_root / "tables" / "counterfactual_trend_summary.csv"
         counter = pd.read_csv(counter_path) if counter_path.is_file() else None
+        record_weighted_path = (
+            self.output_root
+            / "tables"
+            / "record_weighted_feature_property_associations.csv"
+        )
+        record_weighted = (
+            pd.read_csv(record_weighted_path)
+            if record_weighted_path.is_file()
+            else None
+        )
         screening = DataAdapter(self.config, self.inspection).load_screening_assets()
         result = DesignRuleSynthesizer(self.config).run(
             robust,
@@ -862,6 +949,7 @@ unavailable rather than replaced by shared attention.
             screening,
             counter,
             checkpoint_count=len(self.inspection.checkpoint_candidates),
+            record_weighted=record_weighted,
         )
         tables = {
             "design_rule_summary": result.design_rules,
@@ -869,6 +957,9 @@ unavailable rather than replaced by shared attention.
             "candidate_structural_profiles": result.candidate_profiles,
             "top8_vs_nonfeasible_comparison": result.top8_vs_nonfeasible,
             "candidate_rule_consistency": result.candidate_rule_consistency,
+            "molecular_structure_property_evidence_table": (
+                result.evidence_table
+            ),
         }
         for name, frame in tables.items():
             if not frame.empty:
@@ -932,66 +1023,29 @@ explanation merely because it was selected.
         plotter = PublicationPlotter(self.config)
         figure_dir = self.output_root / "figures"
         tables = self.output_root / "tables"
-        screening = DataAdapter(self.config, self.inspection).load_screening_assets()
         calls: list[tuple[str, Callable[[], list[Path]]]] = [
             (
-                "figureA_microstructure_property_evidence_map",
-                lambda: plotter.evidence_map(
-                    pd.read_csv(tables / "design_rule_summary.csv"),
-                    figure_dir / "figureA_microstructure_property_evidence_map",
-                ),
-            ),
-            (
-                "figureB_property_specific_structure_heatmap",
-                lambda: plotter.association_heatmap(
-                    pd.read_csv(tables / "feature_property_associations.csv"),
-                    figure_dir / "figureB_property_specific_structure_heatmap",
-                ),
-            ),
-            (
-                "figureC_key_factor_response_curves",
-                lambda: plotter.response_curves(
-                    pd.read_csv(tables / "nonlinear_structure_property_trends.csv"),
-                    figure_dir / "figureC_key_factor_response_curves",
-                ),
-            ),
-            (
-                "figureD_counterfactual_trends",
-                lambda: plotter.counterfactual_trends(
-                    pd.read_csv(tables / "counterfactual_predictions.csv"),
-                    pd.read_csv(tables / "matched_molecular_pairs.csv"),
-                    figure_dir / "figureD_counterfactual_trends",
-                ),
-            ),
-            (
-                "figureE_cross_ion_profiles",
-                lambda: plotter.cross_ion_profile(
-                    pd.read_csv(tables / "high_low_property_interaction_contrasts.csv"),
-                    figure_dir / "figureE_cross_ion_profiles",
-                ),
-            ),
-            (
-                "figureF_supercapacitor_design_map",
-                lambda: plotter.screening_design_map(
-                    screening["candidate_trajectory_608"],
-                    screening["top8"],
-                    figure_dir / "figureF_supercapacitor_design_map",
-                ),
-            ),
-            (
-                "figure_main_molecular_origin_analysis",
-                lambda: plotter.composite_results_figure(
+                "figure_main_molecular_origin_analysis_final",
+                lambda: plotter.composite_results_figure_v2(
                     pd.read_csv(tables / "design_rule_summary.csv"),
                     pd.read_csv(tables / "feature_property_associations.csv"),
                     pd.read_csv(tables / "nonlinear_structure_property_trends.csv"),
-                    pd.read_csv(tables / "counterfactual_predictions.csv"),
-                    pd.read_csv(tables / "matched_molecular_pairs.csv"),
+                    pd.read_csv(
+                        tables / "condition_matched_substitution_pairs.csv"
+                    ),
                     pd.read_csv(
                         tables / "high_low_property_interaction_contrasts.csv"
                     ),
-                    screening["candidate_trajectory_608"],
-                    screening["top8"],
-                    figure_dir / "figure_main_molecular_origin_analysis",
+                    figure_dir / "figure_main_molecular_origin_analysis_final",
+                ),
+            ),
+            (
+                "figure_si_heat_capacity_size_control",
+                lambda: plotter.heat_capacity_size_control_figure(
+                    pd.read_csv(
+                        tables / "heat_capacity_size_control_identity_data.csv"
+                    ),
+                    figure_dir / "figure_si_heat_capacity_size_control",
                 ),
             ),
         ]
@@ -1010,21 +1064,31 @@ explanation merely because it was selected.
         (self.output_root / "reports" / "composite_figure_contract.md").write_text(
             """# Composite figure contract
 
-- Core conclusion: condition-controlled associations, frozen-model
-  sensitivities, valid-SMILES counterfactuals and applicability-domain-aware
-  diagnostics jointly support auditable structure–property hypotheses, which
-  are used only for post hoc interpretation of the unchanged shortlist.
+- Core conclusion: condition-controlled associations, matched ion
+  substitutions and frozen-model diagnostics jointly support auditable
+  microstructure–property relationships that can be used as qualitative
+  structural priors before full property inference.
 - Archetype: asymmetric mixed-modality quantitative figure.
 - Backend: Python/Matplotlib only.
-- Final size: 183 mm × 229 mm.
-- Panel a: strongest evidence-gated association for each property.
-- Panel b: property-specific condition-controlled association matrix.
-- Panel c: observed structural-factor response curves.
-- Panel d: matched-pair and valid-SMILES counterfactual evidence.
-- Panel e: shared cross-ion attention diagnostics.
-- Panel f: post hoc 608-candidate and formal Top-8 context.
-- Reviewer boundary: no causal, interaction-energy, electrochemical,
-  liquid-state or cross-checkpoint-stability claim is made.
+- Final size: 183 mm × 173 mm.
+- Panel a: integrated hero map in which the three highest-confidence
+  condition-controlled structural associations and three largest cross-ion
+  attention contrasts per property converge on the same property nodes.
+- Panel b: ion-level dominance plot showing the strongest signed partial
+  correlation within cation, anion and ion-pair descriptor scopes for each
+  property; it answers which molecular level dominates rather than repeating
+  the named links in panel a.
+- Panels b and d: a vertically stacked left-hand evidence column containing
+  ion-level dominance and condition-matched substitution-effect forests. A
+  shared low-saturation blue/coral/violet family identifies ion roles.
+- Panel c: a right-hand 3 × 2 small-multiple atlas containing three
+  curve-supported structural priors per property. Candidates are ordered
+  deterministically by confidence level, absolute partial correlation, family
+  consistency and factor name. Blue, coral and violet identify cation, anion
+  and ion-pair scopes; solid-circle, dashed-square and dotted-triangle curves
+  identify ranks 1--3.
+- Reviewer boundary: no candidate screening, causal, interaction-energy,
+  electrochemical-suitability or cross-checkpoint-stability claim is made.
 """,
             encoding="utf-8",
         )
@@ -1033,19 +1097,32 @@ explanation merely because it was selected.
 
 - Rendering backend: Python/Matplotlib.
 - Export bundle: PNG and TIFF at 600 dpi; PDF and SVG with editable text.
-- Panel labels: bold lowercase a–f at the upper-left of each evidence block.
-- Palette: restrained red/blue directions, teal summaries and viridis only
-  for the continuous thermal-diffusivity scale; no rainbow map.
-- Statistics: sample sizes are printed for response curves, counterfactual
-  candidates and matched-pair panels. BH-FDR significance is encoded in
-  panel b. Error bars in panel c are within-bin standard errors.
+- Typography at the 183 mm final width: panel titles are 8.5--9.0 pt,
+  axes and legends are 5.5--6.0 pt, and the smallest in-panel factor
+  key is 5.3 pt.
+- Panel labels: bold lowercase a–d at the upper-left of each evidence block.
+- Palette: restrained red/blue association directions, low-saturation
+  blue/coral/violet ion roles and orange/purple attention contrasts; no
+  rainbow map.
+- Panel-c legend: one shared key maps blue/coral/violet to
+  cation/anion/ion-pair scope and solid-circle/dashed-square/dotted-triangle
+  to deterministic ranks 1--3.
+- Panel-a encoding: red/blue gives association direction and line width gives
+  absolute condition-controlled partial correlation; the source table records
+  the exact displayed width and deterministic within-property rank.
+- Statistics: sample sizes are printed for response curves and matched-pair
+  panels. BH--FDR significance is encoded by marker rims in panel b. Ribbons
+  in panel c are within-bin standard errors. Panel d reports 10th, 25th, 50th,
+  75th and 90th percentiles without suppressing the underlying source archive.
 - Source-data traceability: one CSV per panel is written to
   `results/tables/figure_source_data/`.
-- Integrity: panel d retains all matched-pair values; outliers are displayed
-  with low-opacity markers rather than removed.
-- Interpretation control: panel e explicitly identifies attention as a model
-  focus pattern rather than interaction energy; panel f is post hoc and does
-  not alter the formal shortlist.
+- Integrity: panel d is computed from every available observed matched-pair
+  value and exports the exact displayed quantiles and sample counts; the full
+  pair-level archive remains available in `matched_molecular_pairs.csv`.
+- Interpretation control: the right side of panel a explicitly identifies
+  attention as a model-focus pattern rather than interaction energy. Rule-level evidence components
+  remain available in the source tables rather than being collapsed into a
+  prediction, confidence probability or suitability score.
 """,
             encoding="utf-8",
         )
@@ -1071,8 +1148,8 @@ explanation merely because it was selected.
         matched_pairs = pd.read_csv(
             self.output_root / "tables" / "matched_molecular_pairs.csv"
         )
-        counterfactuals = pd.read_csv(
-            self.output_root / "tables" / "counterfactual_predictions.csv"
+        nonlinear = pd.read_csv(
+            self.output_root / "tables" / "nonlinear_structure_property_trends.csv"
         )
         observed_ad = pd.read_csv(
             self.output_root / "tables" / "observed_test_applicability_domain.csv"
@@ -1081,9 +1158,6 @@ explanation merely because it was selected.
             self.output_root
             / "tables"
             / "high_low_property_interaction_contrasts.csv"
-        )
-        shortlist_contrasts = pd.read_csv(
-            self.output_root / "tables" / "top8_vs_nonfeasible_comparison.csv"
         )
         strong = (
             rules.loc[rules["confidence_level"].isin(["Level A", "Level B"])]
@@ -1182,6 +1256,10 @@ explanation merely because it was selected.
             return raw_value
 
         matched_statistics: dict[str, dict[str, float | int]] = {}
+        matched_role_statistics: dict[
+            str,
+            dict[str, dict[str, float | int]],
+        ] = {}
         for property_name in [
             "Density",
             "Viscosity",
@@ -1199,36 +1277,20 @@ explanation merely because it was selected.
                 "count": int(len(values)),
                 "median": float(values.median()),
             }
+            matched_role_statistics[property_name] = {}
+            for fixed_role in ["anion_fixed", "cation_fixed"]:
+                role_values = pd.to_numeric(
+                    matched_pairs.loc[
+                        matched_pairs["fixed_role"] == fixed_role,
+                        value_column,
+                    ],
+                    errors="coerce",
+                ).dropna()
+                matched_role_statistics[property_name][fixed_role] = {
+                    "count": int(len(role_values)),
+                    "median": float(role_values.median()),
+                }
 
-        counterfactual_candidate_count = int(
-            counterfactuals["candidate_id"].nunique()
-        )
-        counterfactual_record_count = int(len(counterfactuals))
-        counterfactual_ad_counts = (
-            counterfactuals[["candidate_id", "AD_status"]]
-            .drop_duplicates()["AD_status"]
-            .value_counts()
-            .to_dict()
-        )
-        counterfactual_temperature_count = int(
-            counterfactuals["temperature_K"].nunique()
-        )
-
-        def _counterfactual_delta(property_name: str) -> pd.Series:
-            pivot = counterfactuals.pivot(
-                index="candidate_id",
-                columns="temperature_K",
-                values=property_name,
-            )
-            low_temperature = float(pivot.columns.min())
-            high_temperature = float(pivot.columns.max())
-            return np.log(pivot[high_temperature]) - np.log(
-                pivot[low_temperature]
-            )
-
-        viscosity_delta = _counterfactual_delta("Viscosity")
-        conductivity_delta = _counterfactual_delta("ElectricalConductivity")
-        observed_ad_counts = observed_ad["AD_status"].value_counts().to_dict()
         inference_record_count = int(len(observed_ad))
 
         def _attention_extreme(property_name: str) -> pd.Series:
@@ -1243,18 +1305,7 @@ explanation merely because it was selected.
         conductivity_attention = _attention_extreme(
             "ElectricalConductivity"
         )
-        strongest_shortlist_contrast = shortlist_contrasts.iloc[
-            shortlist_contrasts["standardized_mean_difference"].abs().argmax()
-        ]
         unsupported_count = int(len(unsupported))
-        in_domain_counterfactuals = int(
-            counterfactual_ad_counts.get("in_domain", 0)
-        )
-        borderline_counterfactuals = int(
-            counterfactual_ad_counts.get("borderline", 0)
-        )
-        viscosity_negative_count = int((viscosity_delta < 0).sum())
-        conductivity_positive_count = int((conductivity_delta > 0).sum())
         viscosity_attention_delta = float(
             viscosity_attention.get("high_minus_low", np.nan)
         )
@@ -1267,11 +1318,24 @@ explanation merely because it was selected.
         conductivity_attention_n = int(
             conductivity_attention.get("high_group_count", 0)
         )
-        shortlist_feature = str(
-            strongest_shortlist_contrast["feature"]
-        ).replace("_", " ")
-        shortlist_effect = float(
-            strongest_shortlist_contrast["standardized_mean_difference"]
+        primary_evidence = PublicationPlotter._rule_evidence_source(
+            rules,
+            nonlinear,
+        )
+        primary_family_min = float(
+            primary_evidence["family_consistency"].min()
+        )
+        primary_family_max = float(
+            primary_evidence["family_consistency"].max()
+        )
+        primary_attribution_rank_min = int(
+            primary_evidence["attribution_rank"].min()
+        )
+        primary_attribution_rank_max = int(
+            primary_evidence["attribution_rank"].max()
+        )
+        primary_direction_agreement = int(
+            primary_evidence["response_direction_consistent"].sum()
         )
         factor_names_zh = {
             "Density": "阴离子氟原子比例",
@@ -1282,54 +1346,57 @@ explanation merely because it was selected.
             "ThermalConductivity": "阴离子分子量（缩放）",
         }
 
-        results_en_markdown = f"""# 3.X Evidence-integrated molecular interpretation of thermophysical predictions
+        results_en_markdown = f"""# 3.X Evidence-integrated microstructure–property relationships from MIPGraph
 
-To test whether the frozen MIPGraph representation retains chemically
-interpretable information beyond aggregate predictive accuracy, we performed
-inference on {inference_record_count:,} identity-aligned test records without
-retraining; individual observed-property analyses used up to
-{sample_count:,} labelled records (Fig. X). The analysis deliberately separated observed-data association,
-frozen-model sensitivity and chemical interpretation, and promoted a
-structure–property statement only when the predefined evidence gates agreed.
-This procedure retained {level_b_count} Level B and {level_c_count} Level C
-rules, while preserving {unsupported_count} hypotheses as unsupported. No
-Level A rule was assigned because only one compatible checkpoint was available;
-the present evidence therefore supports auditable hypotheses rather than
-cross-checkpoint molecular laws.
+To test whether the frozen MIPGraph representation encodes chemically
+interpretable information beyond aggregate predictive accuracy, we analysed
+{inference_record_count:,} identity-aligned test records without retraining;
+individual observed-property analyses used up to {sample_count:,} labelled
+records (Fig. X). Observed-data association, frozen-model attribution and
+chemical interpretation were kept separate, and a structure–property statement
+was retained only after passing the predefined evidence gates. This procedure
+yielded {level_b_count} Level B and {level_c_count} Level C rules, while
+preserving {unsupported_count} hypotheses as unsupported. No Level A rule was
+assigned because only one compatible checkpoint was available. The resulting
+statements are therefore treated as auditable microstructure–property
+hypotheses rather than cross-checkpoint molecular laws.
 
-## 3.X.1 Property-specific structural evidence
+## 3.X.1 Property-specific microstructure–property relationships
 
-After accounting for temperature, pressure, cation family and anion family,
-the dominant association remained property specific (Fig. Xb). The strongest
-Level B association for density involved {_factor("Density")}
-($r_{{partial}}={_partial_r("Density"):.3f}$,
+The multi-link evidence map summarizes the three highest-confidence eligible
+associations for each property (Fig. Xa). After adjustment for temperature,
+pressure, cation family and anion family, the ion-level comparison in Fig. Xb
+separates whether the strongest retained association within each scope
+originates from a cation, anion or ion-pair descriptor. This avoids treating
+the molecular representation as a single undifferentiated descriptor block.
+Density was most strongly associated with
+{_factor("Density")} ($r_{{\mathrm{{partial}}}}={_partial_r("Density"):.3f}$,
 $q={_q_text("Density")}$), whereas viscosity was negatively associated with
-{_factor("Viscosity")}
-($r_{{partial}}={_partial_r("Viscosity"):.3f}$,
-$q={_q_text("Viscosity")}$). The transport response was likewise distinct:
-electrical conductivity decreased with
+{_factor("Viscosity")} ($r_{{\mathrm{{partial}}}}={_partial_r("Viscosity"):.3f}$,
+$q={_q_text("Viscosity")}$). Electrical conductivity decreased with
 {_factor("ElectricalConductivity")}
-($r_{{partial}}={_partial_r("ElectricalConductivity"):.3f}$,
-$q={_q_text("ElectricalConductivity")}$). Heat capacity exhibited the largest
-absolute partial correlation, with {_factor("HeatCapacity")}
-($r_{{partial}}={_partial_r("HeatCapacity"):.3f}$; the adjusted probability
-was below numerical reporting precision), while surface tension and thermal
-conductivity were most strongly associated with
+($r_{{\mathrm{{partial}}}}={_partial_r("ElectricalConductivity"):.3f}$,
+$q={_q_text("ElectricalConductivity")}$), whereas heat capacity increased
+with {_factor("HeatCapacity")}
+($r_{{\mathrm{{partial}}}}={_partial_r("HeatCapacity"):.3f}$). Surface tension and
+thermal conductivity were most strongly associated with
 {_factor("SurfaceTension")}
-($r_{{partial}}={_partial_r("SurfaceTension"):.3f}$,
-$q={_q_text("SurfaceTension")}$) and
+($r_{{\mathrm{{partial}}}}={_partial_r("SurfaceTension"):.3f}$) and
 {_factor("ThermalConductivity")}
-($r_{{partial}}={_partial_r("ThermalConductivity"):.3f}$,
-$q={_q_text("ThermalConductivity")}$), respectively. The binned responses
-(Fig. Xc) further showed that these associations need not be linear across the
-sampled structural range. These effect estimates are conditional associations,
-not additive atomic contributions or causal molecular determinants.
+($r_{{\mathrm{{partial}}}}={_partial_r("ThermalConductivity"):.3f}$), respectively.
+The rank-1 binned responses for these six primary factors preserved the
+corresponding association direction in {primary_direction_agreement} of 6
+cases. Figure Xc additionally exposes the rank-2 and rank-3 curve-supported
+factors for each property, revealing alternative and sometimes non-linear
+responses over the sampled structural ranges. These quantities are conditional
+associations, not additive atomic contributions or causal molecular
+determinants.
 
-## 3.X.2 Matched-pair and counterfactual evidence
+## 3.X.2 Condition-matched structural substitutions
 
-The matched-pair archive contained {len(matched_pairs):,} condition-matched
-structural comparisons. Transport properties showed the largest median
-response magnitudes: median $|\\Delta\\ln y|$ was
+The matched-pair archive contained {len(matched_pairs):,} structural
+comparisons aligned in temperature and pressure (Fig. Xd). Transport properties
+showed the largest median response magnitudes: median $|\\Delta\\ln y|$ was
 {matched_statistics["ElectricalConductivity"]["median"]:.3f} for electrical
 conductivity ($n={matched_statistics["ElectricalConductivity"]["count"]:,}$)
 and {matched_statistics["Viscosity"]["median"]:.3f} for viscosity
@@ -1342,136 +1409,143 @@ were {matched_statistics["Density"]["median"]:.3f} for density
 ($n={matched_statistics["SurfaceTension"]["count"]:,}$), and
 {matched_statistics["ThermalConductivity"]["median"]:.3f} for thermal
 conductivity ($n={matched_statistics["ThermalConductivity"]["count"]:,}$).
-The latter estimate is necessarily tentative because only
-{matched_statistics["ThermalConductivity"]["count"]} matched comparisons
-carried two observed thermal-conductivity labels.
+The role-resolved distributions add information that is lost in the pooled
+median: anion changes showed a larger median viscosity response than cation
+changes ({matched_role_statistics["Viscosity"]["cation_fixed"]["median"]:.3f}
+versus
+{matched_role_statistics["Viscosity"]["anion_fixed"]["median"]:.3f}), whereas
+cation changes produced the larger heat-capacity response
+({matched_role_statistics["HeatCapacity"]["anion_fixed"]["median"]:.3f}
+versus
+{matched_role_statistics["HeatCapacity"]["cation_fixed"]["median"]:.3f}).
+Electrical-conductivity responses were comparably broad for the two roles
+({matched_role_statistics["ElectricalConductivity"]["anion_fixed"]["median"]:.3f}
+versus
+{matched_role_statistics["ElectricalConductivity"]["cation_fixed"]["median"]:.3f}).
+The thermal-conductivity comparison remains exploratory because only
+{matched_statistics["ThermalConductivity"]["count"]} matched pairs carried two
+observed labels. By separating cation and anion substitutions, this analysis
+quantifies how changes in either ionic component accompany changes in each
+macroscopic property without assigning a causal effect to a specific edit.
 
-We further evaluated {counterfactual_candidate_count} unique, RDKit-valid and
-charge-balanced ion pairs at {counterfactual_temperature_count} temperatures,
-yielding {counterfactual_record_count} frozen-model predictions (Fig. Xd).
-{in_domain_counterfactuals} structures were inside the descriptor-space
-applicability domain and {borderline_counterfactuals} were borderline.
-Between 298.15 and 348.15 K, all
-{viscosity_negative_count} evaluable structures showed lower predicted
-viscosity (median $\\Delta\\ln\\eta={viscosity_delta.median():.3f}$), whereas
-all {conductivity_positive_count} showed higher predicted conductivity
-(median $\\Delta\\ln\\sigma={conductivity_delta.median():.3f}$). These curves
-describe temperature responses of the edited structures; they do not by
-themselves identify a modification-versus-parent causal effect.
-
-## 3.X.3 Cross-ion diagnostics and post hoc candidate interpretation
+## 3.X.3 Model diagnostics and qualitative structural priors
 
 Condition-controlled residual quartiles revealed property-dependent contrasts
-in the shared cross-ion attention (Fig. Xe). Alkyl-carbon–anion-polar-site
+in the shared cross-ion attention (right side of Fig. Xa). Alkyl-carbon–anion-polar-site
 pairs carried more attention per atom pair in the high-conductivity quartile
-($\\Delta={conductivity_attention_delta:.3f}$; $n={conductivity_attention_n}$
-per quartile), but less in the high-viscosity quartile
-($\\Delta={viscosity_attention_delta:.3f}$; $n={viscosity_attention_n}$ per
-quartile). This opposing transport pattern is consistent with the model using
-different ion-pair contexts across the conductivity and viscosity response
-regimes. However, the attention tensor is shared by the six property heads and
-is compositionally constrained; it is therefore a model-focus diagnostic, not
-an interaction energy.
+($\\Delta={conductivity_attention_delta:.3f}$;
+$n={conductivity_attention_n}$ per quartile), but less in the high-viscosity
+quartile ($\\Delta={viscosity_attention_delta:.3f}$;
+$n={viscosity_attention_n}$ per quartile). This opposing transport pattern is
+consistent with the model using different ion-pair contexts across the two
+response regimes. Because the attention tensor is shared by six property
+heads and is compositionally constrained, it is a model-focus diagnostic and
+not an interaction energy.
 
-Finally, the molecular evidence was projected onto the pre-existing
-608-candidate screening space without altering hard constraints, Pareto ranks
-or Top-8 membership (Fig. Xf). The largest Top-8 versus non-feasible
-standardized contrast was observed for {shortlist_feature}
-($\\Delta_{{std}}={shortlist_effect:.2f}$; $n=8$ versus $n=582$).
-Across all evidence-gated candidate–rule comparisons, 343 of 720 were
-directionally consistent, indicating that no single motif explains the
-shortlist. Thus, the consolidated analysis supplies an auditable molecular
-rationale for prioritization, while leaving liquid-state persistence,
-electrochemical stability, capacitance, cycling behaviour and safety to
-downstream experimental qualification.
+The corresponding rule-level association, family-consistency, attribution and
+response-monotonicity values remain available in the auditable source tables.
+Once derived from the trained model and reference data, these rules require
+only molecular descriptors when applied to a new ion-pair identity. They can
+therefore support a qualitative pre-inference judgement of whether a structure
+tends to favour higher or lower values of a specific thermophysical property.
+They do not replace full MIPGraph inference and do not determine overall
+electrolyte suitability, phase behaviour, electrochemical stability,
+capacitance, cycling performance or safety.
 """
 
-        results_zh_markdown = f"""# 3.X 热物性预测的多证据分子解释
+        results_zh_markdown = f"""# 3.X MIPGraph 提炼的微观结构—宏观性质关系
 
-为检验冻结的 MIPGraph 表征是否在总体预测精度之外保留了可解释的化学
-信息，我们在不重新训练模型的前提下对 {inference_record_count:,} 条身份
-严格对齐的测试记录完成推理；单项实验性质分析最多使用
-{sample_count:,} 条有效标签记录（图 X）。分析过程严格区分实验数据关联、冻结模型敏感性
-和化学解释，只有满足预定义证据门槛的结构—性质关系才被提升为正式规律。
-最终得到 {level_b_count} 条 Level B 和 {level_c_count} 条 Level C 规律，
-另有 {unsupported_count} 个假设作为证据不足项完整保留。由于工作区只有
-一个兼容 checkpoint，本分析没有授予 Level A，因此这些结果应被理解为
-可审计的结构—性质假设，而不是跨 checkpoint 的普适分子规律。
+为检验冻结的 MIPGraph 表征是否在总体预测精度之外编码了可解释的化学
+信息，我们在不重新训练模型的前提下分析了 {inference_record_count:,} 条
+身份严格对齐的测试记录；单项实验性质分析最多使用 {sample_count:,} 条
+有效标签记录（图 X）。实验数据关联、冻结模型归因和化学解释始终分开
+处理，只有通过预定义证据门槛的结构—性质关系才被保留。该过程得到
+{level_b_count} 条 Level B 和 {level_c_count} 条 Level C 规律，并将
+{unsupported_count} 个假设保留为证据不足项。由于当前只有一个兼容
+checkpoint，没有规律被授予 Level A。因此，这些结论被视为可审计的
+微观结构—宏观热物性假设，而不是跨 checkpoint 的普适分子规律。
 
-## 3.X.1 性质特异性结构证据
+## 3.X.1 性质特异性的微观结构—宏观性质关系
 
-在控制温度、压力、阳离子家族和阴离子家族后，不同热物性仍呈现明显不同
-的结构关联模式（图 Xb）。密度最强的 Level B 关联来自
-{factor_names_zh["Density"]}（偏相关
-$r={_partial_r("Density"):.3f}$，$q={_q_text("Density")}$）；黏度与
+多连接证据图汇总了每种性质置信度最高的三条合格关联（图 Xa）。在控制
+温度、压力、阳离子家族和阴离子家族后，图 Xb 进一步区分了每种性质在
+阳离子、阴离子和离子对描述符范围内的最强关联来源，避免把整个分子表征
+视为不可分解的描述符整体。密度与 {factor_names_zh["Density"]} 的关联最强
+（偏相关 $r={_partial_r("Density"):.3f}$，
+$q={_q_text("Density")}$）；黏度与
 {factor_names_zh["Viscosity"]} 呈负相关
-（$r={_partial_r("Viscosity"):.3f}$，$q={_q_text("Viscosity")}$）。
-电导率与 {factor_names_zh["ElectricalConductivity"]} 同样呈负相关
-（$r={_partial_r("ElectricalConductivity"):.3f}$，
-$q={_q_text("ElectricalConductivity")}$）。热容的绝对偏相关最大，
-对应 {factor_names_zh["HeatCapacity"]}
-（$r={_partial_r("HeatCapacity"):.3f}$，校正概率低于数值报告精度）；
-表面张力和热导率则分别与 {factor_names_zh["SurfaceTension"]}
-（$r={_partial_r("SurfaceTension"):.3f}$）和
+（$r={_partial_r("Viscosity"):.3f}$，
+$q={_q_text("Viscosity")}$）。电导率随
+{factor_names_zh["ElectricalConductivity"]} 增大而降低
+（$r={_partial_r("ElectricalConductivity"):.3f}$），热容则随
+{factor_names_zh["HeatCapacity"]} 增大而升高
+（$r={_partial_r("HeatCapacity"):.3f}$）。表面张力和热导率分别与
+{factor_names_zh["SurfaceTension"]}
+（$r={_partial_r("SurfaceTension"):.3f}$）及
 {factor_names_zh["ThermalConductivity"]}
 （$r={_partial_r("ThermalConductivity"):.3f}$）关系最强。
-分箱响应曲线进一步表明，部分关系在采样结构范围内并非严格线性（图 Xc）。
-这些效应量表示条件受控关联，而不是原子贡献的简单加和或因果决定因素。
+上述六条主要规律中，第 1 位结构因子的实验分箱曲线在
+{primary_direction_agreement}/6 种性质中保持了相同方向。图 Xc 进一步
+展示每种性质第 2 位和第 3 位具有可用响应曲线的结构因子，从而揭示已采样
+结构范围内的替代响应与部分非线性趋势。这些效应量是条件受控关联，不能
+解释为原子贡献的简单加和或因果分子决定因素。
 
-## 3.X.2 匹配分子对与反事实证据
+## 3.X.2 条件匹配的离子结构替换响应
 
-匹配分子对库共包含 {len(matched_pairs):,} 个条件匹配的结构比较。输运
-性质的响应幅度最大：电导率和黏度的中位
+匹配分子对库包含 {len(matched_pairs):,} 个温度和压力匹配的结构比较
+（图 Xd）。输运性质表现出最大的中位响应幅度：电导率和黏度的中位
 $|\\Delta\\ln y|$ 分别为
 {matched_statistics["ElectricalConductivity"]["median"]:.3f}
 （$n={matched_statistics["ElectricalConductivity"]["count"]:,}$）和
 {matched_statistics["Viscosity"]["median"]:.3f}
-（$n={matched_statistics["Viscosity"]["count"]:,}$）。相比之下，密度、
-热容、表面张力和热导率的对应中位数分别为
+（$n={matched_statistics["Viscosity"]["count"]:,}$）。密度、热容、
+表面张力和热导率的对应中位数分别为
 {matched_statistics["Density"]["median"]:.3f}、
 {matched_statistics["HeatCapacity"]["median"]:.3f}、
 {matched_statistics["SurfaceTension"]["median"]:.3f} 和
-{matched_statistics["ThermalConductivity"]["median"]:.3f}。其中热导率
+{matched_statistics["ThermalConductivity"]["median"]:.3f}。
+离子角色分辨的分布进一步揭示了总体中位数无法表达的信息：阴离子替换的
+黏度响应中位数高于阳离子替换
+（{matched_role_statistics["Viscosity"]["cation_fixed"]["median"]:.3f}
+对
+{matched_role_statistics["Viscosity"]["anion_fixed"]["median"]:.3f}），
+而阳离子替换的热容响应更高
+（{matched_role_statistics["HeatCapacity"]["anion_fixed"]["median"]:.3f}
+对
+{matched_role_statistics["HeatCapacity"]["cation_fixed"]["median"]:.3f}）。
+两种替换角色的电导率响应均较宽，且中位数相近
+（{matched_role_statistics["ElectricalConductivity"]["anion_fixed"]["median"]:.3f}
+对
+{matched_role_statistics["ElectricalConductivity"]["cation_fixed"]["median"]:.3f}）。
+其中热导率
 仅有 {matched_statistics["ThermalConductivity"]["count"]} 个双标签匹配
-比较，因此该估计只能视为探索性结果。
+比较，因此该结果只能作为探索性证据。通过分别比较阳离子和阴离子替换，
+该分析量化了离子组分变化与各宏观性质变化之间的对应关系，但不把某次
+结构编辑解释为因果作用。
 
-我们进一步在 {counterfactual_temperature_count} 个温度下评价了
-{counterfactual_candidate_count} 个 RDKit 合法且电中性的离子对，共得到
-{counterfactual_record_count} 条冻结模型预测（图 Xd）。其中
-{in_domain_counterfactuals} 个结构位于适用域内，
-{borderline_counterfactuals} 个处于边界。298.15–348.15 K 范围内，
-全部 {viscosity_negative_count} 个可评价结构的预测黏度下降
-（中位 $\\Delta\\ln\\eta={viscosity_delta.median():.3f}$），全部
-{conductivity_positive_count} 个结构的预测电导率上升
-（中位 $\\Delta\\ln\\sigma={conductivity_delta.median():.3f}$）。
-这些曲线描述的是编辑后结构的温度响应，不能单独作为“修改相对于母体产生
-因果效应”的证据。
-
-## 3.X.3 跨离子诊断与候选事后解释
+## 3.X.3 模型诊断与定性结构先验
 
 基于条件控制残差四分位组的分析显示，共享 cross-ion attention 存在性质
-相关的差异模式（图 Xe）。烷基碳—阴离子极性位点原子对在高电导率组中
-获得更多的单位原子对 attention
+相关的差异模式（图 Xa 右侧）。烷基碳—阴离子极性位点原子对在高电导率组中
+获得更多单位原子对 attention
 （$\\Delta={conductivity_attention_delta:.3f}$，每组
 $n={conductivity_attention_n}$），而在高黏度组中相对减少
 （$\\Delta={viscosity_attention_delta:.3f}$，每组
-$n={viscosity_attention_n}$）。这一相反的输运模式说明模型在不同输运
-响应区间利用了不同的离子对结构语境，但该 attention 由六个性质头共享且
-受组成影响，因此只能解释为模型关注模式，不能解释为真实相互作用能。
+$n={viscosity_attention_n}$）。这一相反的输运模式与模型在两种响应区间
+使用不同离子对结构语境相一致。由于该 attention 由六个性质头共享且受
+组成约束，它只能解释为模型关注模式，不能解释为真实相互作用能。
 
-最后，我们在不改变 hard constraints、Pareto 排序或 Top-8 名单的前提下，
-将上述分子证据投影到既有的 608 候选筛选空间（图 Xf）。Top-8 与
-582 个未通过硬约束候选之间最大的标准化结构差异来自
-{shortlist_feature}（$\\Delta_{{std}}={shortlist_effect:.2f}$）。
-在全部候选—规律比较中，仅 720 项中的 343 项方向一致，说明不存在一个
-单独结构基元能够解释整个正式名单。因此，本节提供的是可审计的候选排序
-分子依据；持续液态、电化学稳定性、真实电容、循环寿命与安全性仍需后续
-实验评价。
+相应的关联强度、离子家族一致性、模型归因百分位和实验响应单调性仍完整
+保存在可审计源数据表中。这些规律一旦由训练模型和参考数据提炼完成，在
+面对新的离子对身份时只需要计算分子结构描述符。因此，它们可以
+在完整性质推理之前，对某一结构更倾向于提高或降低特定热物性作出定性的
+先验判断。但这些规律不能替代完整 MIPGraph 计算，也不能直接判定电解液
+整体适宜性、液态范围、电化学稳定性、真实电容、循环性能或安全性。
 """
 
         results_en_tex = results_en_markdown.replace(
-            "# 3.X Evidence-integrated molecular interpretation of thermophysical predictions",
-            r"\subsection{Evidence-integrated molecular interpretation of thermophysical predictions}",
+            "# 3.X Evidence-integrated microstructure–property relationships from MIPGraph",
+            r"\subsection{Evidence-integrated microstructure--property relationships from MIPGraph}",
         )
         results_en_tex = re.sub(
             r"^## 3\.X\.\d+ (.+)$",
@@ -1480,15 +1554,15 @@ $n={viscosity_attention_n}$）。这一相反的输运模式说明模型在不�
             flags=re.MULTILINE,
         )
         results_en_tex = results_en_tex.replace("(Fig. X)", r"(Fig.~\ref{fig:molecular-origin-composite})")
-        results_en_tex = results_en_tex.replace("Fig. Xb", r"Fig.~\ref{fig:molecular-origin-composite}b")
-        results_en_tex = results_en_tex.replace("Fig. Xc", r"Fig.~\ref{fig:molecular-origin-composite}c")
-        results_en_tex = results_en_tex.replace("Fig. Xd", r"Fig.~\ref{fig:molecular-origin-composite}d")
-        results_en_tex = results_en_tex.replace("Fig. Xe", r"Fig.~\ref{fig:molecular-origin-composite}e")
-        results_en_tex = results_en_tex.replace("Fig. Xf", r"Fig.~\ref{fig:molecular-origin-composite}f")
+        for panel in "abcdef":
+            results_en_tex = results_en_tex.replace(
+                f"Fig. X{panel}",
+                rf"Fig.~\ref{{fig:molecular-origin-composite}}{panel}",
+            )
 
         results_zh_tex = results_zh_markdown.replace(
-            "# 3.X 热物性预测的多证据分子解释",
-            r"\subsection{热物性预测的多证据分子解释}",
+            "# 3.X MIPGraph 提炼的微观结构—宏观性质关系",
+            r"\subsection{MIPGraph 提炼的微观结构--宏观性质关系}",
         )
         results_zh_tex = re.sub(
             r"^## 3\.X\.\d+ (.+)$",
@@ -1497,7 +1571,7 @@ $n={viscosity_attention_n}$）。这一相反的输运模式说明模型在不�
             flags=re.MULTILINE,
         )
         results_zh_tex = results_zh_tex.replace("（图 X）", r"（图~\ref{fig:molecular-origin-composite}）")
-        for panel in "bcdef":
+        for panel in "abcdef":
             results_zh_tex = results_zh_tex.replace(
                 f"图 X{panel}",
                 rf"图~\ref{{fig:molecular-origin-composite}}{panel}",
@@ -1506,26 +1580,22 @@ $n={viscosity_attention_n}$）。这一相反的输运模式说明模型在不�
         composite_caption_en = r"""\begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figure_main_molecular_origin_analysis.pdf}
-\caption{\textbf{Evidence-integrated molecular interpretation of MIPGraph thermophysical predictions.}
-\textbf{a}, Strongest evidence-gated condition-controlled association for each property; red and blue denote positive and negative partial correlations, respectively.
-\textbf{b}, Experimental structure--property partial-correlation matrix after adjustment for temperature, pressure, cation family and anion family; dots indicate BH--FDR $q\leq0.05$.
-\textbf{c}, Binned observed responses for one representative robust factor per property. Points are bin means, error bars are within-bin standard errors and $n$ denotes the total labelled observations contributing to each curve.
-\textbf{d}, Frozen-MIPGraph temperature responses of 28 valid, charge-balanced counterfactual ion pairs (grey, individual structures; teal, median; shading, interquartile range) and observed response magnitudes for condition-matched cation or anion substitutions. Outliers are retained.
-\textbf{e}, Difference in shared cross-ion attention per atom pair between upper and lower quartiles of condition-controlled observed-property residuals. Attention is a model-focus diagnostic, not an interaction energy.
-\textbf{f}, Post hoc projection of the unchanged formal Top-8 onto the 608-candidate thermophysical screening space. Point size denotes worst-window volumetric heat capacity and colour denotes worst-window thermal diffusivity. Neither molecular interpretation nor this panel participates in hard screening, Pareto sorting or shortlist selection.}
+\caption{\textbf{Evidence-integrated microstructure--property relationships from MIPGraph.}
+\textbf{a}, Integrated microstructure--property evidence map. The left side contains the three highest-confidence eligible condition-controlled structural associations per property; red and blue denote positive and negative partial correlations, respectively. The right side contains the three largest shared cross-ion attention contrasts per property between upper and lower quartiles of condition-controlled observed-property residuals; orange and purple denote higher and lower attention in the upper quartile, respectively. Line width scales within each evidence family. All structural links are associative and non-causal, and attention is a model-focus diagnostic rather than an interaction energy.
+\textbf{b}, Ion-level origin of the condition-controlled associations. For each property, the strongest absolute partial correlation is selected independently within the cation, anion and ion-pair descriptor scopes; horizontal position and printed value retain its sign and magnitude, and a dark marker rim denotes BH--FDR $q\leq0.05$. This panel compares the dominant molecular level rather than repeating the individual links in panel a.
+\textbf{c}, Property-specific response shapes for three curve-supported structural priors per property, arranged as a $3\times2$ small-multiple atlas. Factors are selected deterministically by confidence level, absolute partial correlation, family consistency and factor name; Level C evidence is used only after available Level A/B factors in this ordering. Blue, coral and violet identify cation-, anion- and ion-pair-level priors, whereas solid circles, dashed squares and dotted triangles identify ranks 1, 2 and 3. In-panel keys report the factor identity and partial correlation. Curves show centered observed log-property responses, points are bin means and ribbons are within-bin standard errors; the source-data export retains the binned-response Spearman coefficient, log-response range, confidence level and labelled sample size for every curve. Vertical scales are property specific and are not intended for cross-property magnitude comparison.
+\textbf{d}, Distribution forest of observed response magnitudes for condition-matched cation and anion substitutions. Thin and thick segments denote the 10th--90th percentile range and interquartile range, respectively; points denote medians, dotted connectors compare ion roles, and the directly labelled C/A sample counts identify cation and anion changes without a detached legend.}
 \label{fig:molecular-origin-composite}
 \end{figure*}
 """
         composite_caption_zh = r"""\begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figure_main_molecular_origin_analysis.pdf}
-\caption{\textbf{MIPGraph 热物性预测的多证据分子解释。}
-\textbf{a}，每种性质证据等级最高的条件受控关联，红色和蓝色分别表示正、负偏相关。
-\textbf{b}，控制温度、压力及阴阳离子家族后的实验结构--性质偏相关矩阵；圆点表示 BH--FDR $q\leq0.05$。
-\textbf{c}，每种性质一个代表性稳健因素的实验分箱响应；点为箱内均值，误差线为箱内标准误，$n$ 为曲线使用的标签观测总数。
-\textbf{d}，28 个合法且电中性反事实离子对的冻结 MIPGraph 温度响应（灰线为单个结构，青色为中位数，阴影为四分位距），以及条件匹配的阳离子或阴离子替换的实验响应幅度；离群值未被删除。
-\textbf{e}，条件控制实验性质残差上下四分位组之间的单位原子对共享 cross-ion attention 差异；attention 仅为模型关注诊断，不代表相互作用能。
-\textbf{f}，不改变正式 Top-8 的前提下，将其事后投影到 608 候选热物性筛选空间；点大小表示最差温区体积热容，颜色表示最差温区热扩散率。该分子解释及本面板均不参与硬约束筛选、Pareto 排序或正式名单选择。}
+\caption{\textbf{MIPGraph 提炼的微观结构--宏观性质关系。}
+\textbf{a}，整合的微观结构--宏观性质证据图。左侧为每种性质三个置信等级最高且满足条件的结构关联，红色和蓝色分别表示正、负条件受控偏相关；右侧为条件受控实验性质残差上下四分位组之间，每种性质三个最大的共享 cross-ion attention 差异，橙色和紫色分别表示高性质组 attention 增加和降低。线宽分别在两类证据内部随效应绝对值变化。所有结构连线均为非因果关联，attention 仅表示模型关注模式而不代表相互作用能。
+\textbf{b}，条件受控关联的离子层级来源。对每种性质，分别在阳离子、阴离子和离子对描述符中选取偏相关绝对值最大的结构因子；横向位置和标注数值保留偏相关的方向与大小，深色边框表示 BH--FDR $q\leq0.05$。该面板比较主导关联来自哪个分子层级，而不重复面板 a 的具体连线。
+\textbf{c}，每种性质三个具有可审计响应曲线的结构先验，以 $3\times2$ 小多图形式展示。结构因子按照置信等级、偏相关绝对值、家族一致性和名称进行确定性排序；只有在可用 Level A/B 因子不足时，才按该排序补充 Level C 证据。蓝色、珊瑚色和柔和紫色分别表示阳离子、阴离子和离子对层级，实线圆点、虚线方点和点线三角分别表示第 1、2、3 位。子图内的直接标注给出结构因子和偏相关。曲线表示中心化后的实验对数性质响应，点为箱内均值，阴影带为箱内标准误；源数据保留每条曲线的分箱响应 Spearman 系数、对数响应范围、置信等级和标签样本量。各性质使用独立纵轴尺度，不用于跨性质比较响应绝对大小。
+\textbf{d}，条件匹配的阳离子和阴离子替换所引起实验响应幅度的分布森林图。细线和粗线分别表示第 10--90 百分位范围与四分位距，点表示中位数，虚线连接用于比较两种离子替换角色；右侧直接标注的 C/A 样本量分别表示阳离子和阴离子替换，避免使用分离图例。}
 \label{fig:molecular-origin-composite}
 \end{figure*}
 """
@@ -1533,14 +1603,14 @@ $n={viscosity_attention_n}$）。这一相反的输运模式说明模型在不�
             "revision_plan_zh.md": f"""# 论文增量修改建议
 
 建议新增 `3.X Molecular Origins of Ionic-Liquid Thermophysical Properties`，
-但所有表述限定为统计关联、冻结模型敏感性与合法 SMILES 反事实趋势。
+但所有表述限定为统计关联、冻结模型敏感性和条件匹配的结构响应。
 本次对 {inference_record_count} 条记录完成推理，单项实验性质分析最多
 使用 {sample_count} 条标签记录。当前最强证据项为：
 {strongest_text}。
 
 由于工作区仅有 random-point checkpoint，不应写成跨 random-IL、
 property-balanced 或 ion-family 协议均稳定。attention 也不得写成真实
-离子间作用能。
+离子间作用能。本节不包含候选筛选、Pareto 排序或 shortlist 解释。
 """,
             "manuscript_summary_en.md": f"""# Manuscript summary
 
@@ -1568,44 +1638,46 @@ causal molecular laws or evidence of electrochemical performance.
             "composite_figure_caption_zh.tex": composite_caption_zh,
             "discussion_section_draft_en.md": """# Discussion draft
 
-The analysis distinguishes three evidence classes: observed-data association,
-frozen-model sensitivity, and chemistry-based interpretation. Agreement among
-these classes strengthens a prioritization hypothesis but does not establish
-causality. Family imbalance, sparse labels, condition coverage, descriptor
-collinearity, and applicability-domain boundaries remain material limitations.
-The shared cross-ion attention is compositionally constrained and should not be
-equated with an interaction energy. Prospective measurements and independent
-electrochemical qualification are required downstream.
+The analysis distinguishes observed-data association, frozen-model sensitivity
+and chemistry-based interpretation. Agreement among these classes supports a
+qualitative structural prior but does not establish causality. Family
+imbalance, sparse labels, condition coverage and descriptor collinearity remain
+material limitations. The shared cross-ion attention is compositionally
+constrained and should not be equated with an interaction energy. Full property
+inference and prospective measurements remain necessary before judging
+electrolyte suitability.
 """,
             "conclusion_revision_en.md": """# Conclusion revision
 
 The added analysis layer provides a reproducible route from MIPGraph
-predictions to auditable structure–property hypotheses. Its outputs are
-condition-controlled associations, frozen-model sensitivities, and valid-SMILES
-counterfactual trends. They support candidate prioritization and experimental
-planning but do not validate electrolyte performance or universal molecular
-design laws.
+representations to auditable microstructure–property hypotheses. Its outputs
+are condition-controlled associations, matched-pair structural responses and
+frozen-model diagnostics. Once derived, these relationships can provide
+qualitative structural priors before full property inference, but they neither
+determine electrolyte suitability nor establish universal molecular design
+laws.
 """,
             "abstract_revision_points_zh.md": """# 摘要修改要点
 
 - 可增加“非侵入式、可审计的结构—性质后处理流程”。
 - 明确结果属于统计关联和模型敏感性，而非因果发现。
+- 将用途限定为完整性质推理前的定性结构先验，不写成候选筛选结果。
 - 不声称 attention 等于实际相互作用能。
 - 不声称已验证电化学性能、宽温运行或安全性。
 - 明确当前多 checkpoint 稳健性受可用 checkpoint 数量限制。
 """,
             "figure_captions_en.md": """# Figure caption
 
-The manuscript-facing result is the consolidated a–f figure exported as
+The manuscript-facing result is the consolidated a–d figure exported as
 `figure_main_molecular_origin_analysis`. Its complete English LaTeX caption is
-provided in `composite_figure_caption_en.tex`. The six standalone figures are
+provided in `composite_figure_caption_en.tex`. The five standalone figures are
 retained as auditable component exports and need not be placed separately in
 the main text.
 """,
             "figure_captions_zh.md": """# 图注
 
-正文使用合并后的 a–f 总图 `figure_main_molecular_origin_analysis`；完整
-中文 LaTeX 图注见 `composite_figure_caption_zh.tex`。原六张独立图作为
+正文使用合并后的 a–d 总图 `figure_main_molecular_origin_analysis`；完整
+中文 LaTeX 图注见 `composite_figure_caption_zh.tex`。原五张独立图作为
 可审计的组成图保留，不需要在正文中分别排版。
 """,
             "table_captions_en.md": """# Table captions
@@ -1827,9 +1899,9 @@ persistence, or electrochemical suitability.
 ## Suggested paper materials
 
 Use `figure_main_molecular_origin_analysis` as the single manuscript-facing
-a–f result figure. The standalone Figures A–F are retained as auditable
-component exports rather than separate main-text figures. Panel e must retain
-its shared-attention caveat, and panel f must remain explicitly post hoc. All
+a–d result figure. The standalone Figures A–E are retained as auditable
+component exports rather than separate main-text figures. The attention half
+of panel a must retain its shared-attention caveat. All
 panel source data are stored in `results/tables/figure_source_data/`.
 
 ## New-file inventory

@@ -1,6 +1,7 @@
 project:
-  root: "D:/GGNN/IL-model/Sparse-Label-Prediction"
-  output_root: "D:/GGNN/IL-model/Sparse-Label-Prediction/experiments/molecular_origin_analysis/results"
+  # root is resolved from this module; output_root is resolved from root.
+  root: "../.."
+  output_root: "experiments/molecular_origin_analysis/results"
 
 model:
   checkpoint: "auto"
@@ -38,6 +39,17 @@ statistics:
   top_features_per_property: 15
   random_seed: 42
 
+revision_analysis:
+  # Primary inference is balanced over charge-aware ion-pair identities.
+  identity_bootstrap_repeats: 500
+  temperature_spline_knots: 4
+  descriptor_cluster_abs_spearman: 0.85
+  family_proxy_r2_threshold: 0.98
+  minimum_residual_std_ratio: 0.05
+  family_minimum_unique_ils: 8
+  main_top_factors: 3
+  fdr_scope: "global_across_all_experimental_feature_property_hypotheses"
+
 attribution:
   permutation_repeats: 20
   integrated_gradients_steps: 32
@@ -60,6 +72,8 @@ counterfactual:
   require_charge_neutrality: true
   exclude_out_of_domain: true
   temperatures_k: [298.15, 323.15, 348.15]
+  matched_temperature_tolerance_k: 2.0
+  matched_pressure_tolerance_kpa: 5.0
 
 applicability_domain:
   descriptor_knn_k: 5

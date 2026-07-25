@@ -22,6 +22,7 @@ from .feature_extractor import DESCRIPTOR_NAMES, FUNCTIONAL_GROUP_NAMES
 class DesignRuleResults:
     design_rules: pd.DataFrame
     unsupported_hypotheses: pd.DataFrame
+    evidence_table: pd.DataFrame
     property_design_rules: dict[str, Any]
     candidate_profiles: pd.DataFrame
     top8_vs_nonfeasible: pd.DataFrame
@@ -58,7 +59,8 @@ class DesignRuleSynthesizer:
         importance: pd.DataFrame,
         counterfactual_summary: pd.DataFrame | None,
         checkpoint_count: int,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        record_weighted: pd.DataFrame | None = None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         direct = importance.loc[
             importance["method"] == "direct_gradient_x_input"
         ].copy()
@@ -92,22 +94,23 @@ class DesignRuleSynthesizer:
         merged["counterfactual_support"] = merged["feature"].isin(
             supported_modifications
         )
-        merged["checkpoint_consistency"] = checkpoint_count >= 2
-        merged["confidence_level"] = "Unsupported"
-        level_c = (
-            merged["statistical_support"]
-            & merged["model_response_support"]
+        merged["cross_checkpoint_support"] = False
+        merged["cross_checkpoint_status"] = (
+            "not_assessable_single_compatible_checkpoint"
+            if checkpoint_count < 2
+            else "not_evaluated_on_an_identical_identity_set"
         )
-        level_b = level_c & merged["attribution_support"]
-        level_a = (
-            level_b
-            & merged["counterfactual_support"]
-            & merged["checkpoint_consistency"]
-            & (merged["family_consistency"] >= 0.75)
+        merged["checkpoint_consistency"] = False
+        merged["confidence_level"] = "Unsupported"
+        level_c = merged["statistical_support"]
+        level_b = (
+            level_c
+            & merged["model_response_support"]
+            & merged["attribution_support"]
+            & merged["response_shape_support"].fillna(False)
         )
         merged.loc[level_c, "confidence_level"] = "Level C"
         merged.loc[level_b, "confidence_level"] = "Level B"
-        merged.loc[level_a, "confidence_level"] = "Level A"
         merged["ion_role"] = merged["feature"].str.split("_", n=1).str[0]
         merged["effect_direction"] = np.where(
             merged["partial_correlation"] > 0,
@@ -118,7 +121,7 @@ class DesignRuleSynthesizer:
         merged["statistical_evidence"] = merged.apply(
             lambda row: (
                 f"partial r={row.partial_correlation:.3f}; q={row.fdr_q:.3g}; "
-                "cation-family-stratified bootstrap "
+                "IL-identity bootstrap "
                 f"CI=[{row.bootstrap_ci_low:.3f}, {row.bootstrap_ci_high:.3f}]"
             ),
             axis=1,
@@ -148,6 +151,36 @@ class DesignRuleSynthesizer:
             )
         ]
         merged["tradeoff_properties"] = ""
+        merged["partial_r_identity_balanced"] = merged["partial_correlation"]
+        merged["partial_r_ci_low"] = merged["bootstrap_ci_low"]
+        merged["partial_r_ci_high"] = merged["bootstrap_ci_high"]
+        if record_weighted is not None and not record_weighted.empty:
+            record_columns = record_weighted[
+                ["property", "feature", "record_weighted_partial_r"]
+            ].drop_duplicates(["property", "feature"])
+            merged = merged.merge(
+                record_columns,
+                on=["property", "feature"],
+                how="left",
+                validate="one_to_one",
+            )
+        else:
+            merged["record_weighted_partial_r"] = np.nan
+        merged["evidence_eligibility"] = np.where(
+            merged["eligibility_status"].eq("eligible")
+            & merged["statistical_support"],
+            "eligible",
+            "excluded",
+        )
+        merged["evidence_exclusion_reason"] = np.where(
+            merged["eligibility_status"].ne("eligible"),
+            merged["exclusion_reason"],
+            np.where(
+                ~merged["statistical_support"],
+                "global BH-FDR and/or identity-bootstrap gate not passed",
+                "",
+            ),
+        )
         columns = [
             "property",
             "structural_factor",
@@ -177,7 +210,42 @@ class DesignRuleSynthesizer:
                 "counterfactual_support",
             ],
         ].copy()
-        return formal, unsupported
+        evidence_columns = [
+            "property",
+            "feature",
+            "feature_cluster",
+            "structural_scope",
+            "n_records",
+            "n_unique_ils",
+            "n_cation_families",
+            "n_anion_families",
+            "partial_r_identity_balanced",
+            "partial_r_ci_low",
+            "partial_r_ci_high",
+            "fdr_q",
+            "family_consistency",
+            "family_comparison_count",
+            "selection_stability",
+            "record_weighted_partial_r",
+            "attribution_rank",
+            "normalized_importance",
+            "attribution_support",
+            "response_shape_support",
+            "model_partial_correlation",
+            "model_fdr_q",
+            "model_response_support",
+            "cross_checkpoint_support",
+            "cross_checkpoint_status",
+            "confidence_level",
+            "evidence_eligibility",
+            "evidence_exclusion_reason",
+            "analysis_weighting",
+            "fdr_scope",
+            "data_source_covariate",
+            "causal_interpretation",
+        ]
+        evidence = merged[evidence_columns].copy()
+        return formal, unsupported, evidence
 
     @staticmethod
     def _candidate_profiles(trajectory: pd.DataFrame, top8: pd.DataFrame) -> pd.DataFrame:
@@ -300,12 +368,14 @@ class DesignRuleSynthesizer:
         screening_tables: dict[str, pd.DataFrame],
         counterfactual_summary: pd.DataFrame | None = None,
         checkpoint_count: int = 1,
+        record_weighted: pd.DataFrame | None = None,
     ) -> DesignRuleResults:
-        rules, unsupported = self._rules(
+        rules, unsupported, evidence = self._rules(
             robust_factors,
             property_importance,
             counterfactual_summary,
             checkpoint_count,
+            record_weighted,
         )
         trajectory = screening_tables.get("candidate_trajectory_608", pd.DataFrame())
         top8 = screening_tables.get("top8", pd.DataFrame())
@@ -320,6 +390,7 @@ class DesignRuleSynthesizer:
         return DesignRuleResults(
             design_rules=rules,
             unsupported_hypotheses=unsupported,
+            evidence_table=evidence,
             property_design_rules=self._json_rules(rules),
             candidate_profiles=profiles,
             top8_vs_nonfeasible=comparison,
