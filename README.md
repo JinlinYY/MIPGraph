@@ -8,7 +8,7 @@ This repository contains the data-processing workflow, model implementation, tra
 
 > **Mechanism-Factorized Ion-Pair Graph Learning for Multi-Property Prediction of Ionic-Liquid Thermophysical Properties**
 
-![MIPGraph framework](https://github.com/JinlinYY/MIPGraph/blob/main/Intro-method.png)
+![MIPGraph framework](Intro-method.png)
 
 ## Scientific Motivation
 
@@ -27,12 +27,12 @@ Given cation and anion structures together with temperature and pressure, MIPGra
 
 | Property | Symbol | Model output unit |
 |---|---:|---:|
-| Density | \(\rho\) | kg m\(^{-3}\) |
-| Viscosity | \(\eta\) | Pa s |
-| Electrical conductivity | \(\sigma\) | S m\(^{-1}\) |
-| Molar heat capacity | \(C_{p,m}\) | J mol\(^{-1}\) K\(^{-1}\) |
-| Surface tension | \(\gamma\) | N m\(^{-1}\) |
-| Thermal conductivity | \(k\) | W m\(^{-1}\) K\(^{-1}\) |
+| Density | ρ | kg m⁻³ |
+| Viscosity | η | Pa s |
+| Electrical conductivity | σ | S m⁻¹ |
+| Molar heat capacity | Cₚ,ₘ | J mol⁻¹ K⁻¹ |
+| Surface tension | γ | N m⁻¹ |
+| Thermal conductivity | k | W m⁻¹ K⁻¹ |
 
 The manuscript benchmark contains **37,556 condition records** covering **1,125 unique ionic liquids**. Missing property labels are handled directly rather than requiring a complete six-property table for every record.
 
@@ -176,6 +176,8 @@ python scripts/run_mipgraph_four_split_retraining.py
 
 The Uni-Mol2 encoder is used as a frozen feature extractor. A compatible pretrained Uni-Mol2 checkpoint must be placed at the path declared by the selected configuration.
 
+Evaluation and application workflows likewise require a compatible trained MIPGraph checkpoint. If a released checkpoint is not present in the clone, train the corresponding split locally and update the checkpoint path in the selected configuration.
+
 ## Evaluation
 
 Evaluate a trained checkpoint:
@@ -211,6 +213,7 @@ Interpretability and molecular-origin analyses:
 
 ```bash
 python experiments/interpretability/scripts/plot_interpretability_results_current.py
+python il_property_prediction/scripts/compute_feature_importance_heatmap.py
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --panel-labels j,k,l --color-mode panel
 python experiments/interpretability/scripts/compose_interpretability_four_by_three.py
 python experiments/molecular_origin_analysis/run_all.py --stage all
@@ -226,7 +229,7 @@ python experiments/computational_application_case/scripts/build_protocol_stabili
 python experiments/computational_application_case/scripts/build_refactored_application_case.py
 ```
 
-Each experiment directory contains a dedicated README describing its assumptions, inputs, outputs, and scientific boundaries.
+The performance, molecular-origin, and computational-application directories contain dedicated READMEs describing their assumptions, inputs, outputs, and scientific boundaries.
 
 ## Figure Source Data
 
