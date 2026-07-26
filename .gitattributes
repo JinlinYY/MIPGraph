@@ -11,3 +11,4 @@ method.png -filter -diff -merge -text
 *.tiff filter=lfs diff=lfs merge=lfs -text
 *.xlsx filter=lfs diff=lfs merge=lfs -text
 *.xls filter=lfs diff=lfs merge=lfs -text
+experiments/result_analysis/source_data/auditable_virtual_screening_validation/cross_protocol_decision_matrix.csv -text
