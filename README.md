@@ -251,13 +251,6 @@ The source-data manifest and field dictionary can be validated with:
 python experiments/manuscript_figure_source_data/rebuild_manifest.py
 ```
 
-## Citation
-
-If MIPGraph is useful in your research, please cite the accompanying manuscript:
-
-> Jinlin Ye *et al.* **Mechanism-Factorized Ion-Pair Graph Learning for Multi-Property Prediction of Ionic-Liquid Thermophysical Properties.** Manuscript in preparation.
-
-A DOI and final BibTeX entry will be added after publication.
 
 ## Scope and Responsible Use
 
