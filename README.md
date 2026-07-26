@@ -1,12 +1,12 @@
 # MIPGraph
 
-**Mechanism-Factorized Ion-Pair Graph Learning for Multi-Property Prediction of Ionic-Liquid Thermophysical Properties**
+**Deciphering Molecular Origins of Ionic-Liquid Thermophysical Properties through Ion-Pair Representation Learning**
 
 MIPGraph is a condition-aware graph-learning framework for predicting multiple thermophysical properties of ionic liquids (ILs) from molecular structure, temperature, and pressure. It represents an IL as an interacting cation–anion pair and learns shared information across sparsely observed properties while retaining property-specific decoding.
 
 This repository contains the data-processing workflow, model implementation, training and evaluation scripts, baseline studies, interpretation analyses, and computational application used in the accompanying manuscript:
 
-> **Mechanism-Factorized Ion-Pair Graph Learning for Multi-Property Prediction of Ionic-Liquid Thermophysical Properties**
+> **Deciphering Molecular Origins of Ionic-Liquid Thermophysical Properties through Ion-Pair Representation Learning**
 
 ![MIPGraph framework](Intro-method.png)
 
