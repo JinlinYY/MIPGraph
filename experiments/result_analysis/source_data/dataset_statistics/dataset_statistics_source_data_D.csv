@@ -1,7 +1,0 @@
-figure,panel,panel_title,measure,value,unit,n_labels,pct_il
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,263.0,ILs,1.0,23.377777777777776
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,345.0,ILs,2.0,30.666666666666668
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,247.0,ILs,3.0,21.95555555555556
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,163.0,ILs,4.0,14.488888888888887
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,66.0,ILs,5.0,5.866666666666666
-dataset_statistics,D,Distribution of available property labels per IL,il_count_by_label_number,41.0,ILs,6.0,3.644444444444445

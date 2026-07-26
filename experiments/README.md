@@ -17,7 +17,10 @@ needed only for their specific baselines.
 - `dataset_analysis/`: dataset statistics and source-data export scripts.
 - `performance_results/`: audited nine-panel MIPGraph performance figure.
 - `interpretability/`: interpretability and feature-importance figure scripts.
-- `application_case/`: merged application-case and design-agent figure script.
+- `computational_application_case/`: audited virtual-screening application.
+- `molecular_origin_analysis/`: molecular-structure--property analysis.
+- `manuscript_figure_source_data/`: sole authoritative panel-level CSV tree.
+- `result_analysis/`: submission figures and figure-to-source mapping only.
 
 ## Smoke Test
 
@@ -29,7 +32,7 @@ python experiments/baseline_comparison/scripts/run_baseline_comparison.py --help
 python experiments/dataset_analysis/scripts/plot_dataset_statistics_nature.py --help
 python -m experiments.performance_results.plot_performance_results --help
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --help
-python experiments/application_case/scripts/plot_application_case_agent_merged.py --help
+python experiments/computational_application_case/scripts/build_refactored_application_case.py --help
 ```
 
 Baseline training can be checked without launching full model fits:
@@ -68,14 +71,14 @@ python experiments/interpretability/scripts/plot_feature_importance_summary.py -
 python experiments/interpretability/scripts/compose_interpretability_four_by_three.py
 ```
 
-Application-case figure:
+Audited application-case figures:
 
 ```bash
-python experiments/application_case/scripts/plot_application_case_agent_merged.py
+python experiments/computational_application_case/scripts/build_refactored_application_case.py
 ```
 
-For alternative source/output locations:
+Rebuild the authoritative source-data catalogs after refreshing panel CSVs:
 
 ```bash
-python experiments/application_case/scripts/plot_application_case_agent_merged.py --source-dir path/to/source_data --output-prefix path/to/figure_application_case_agent_merged --dpi 150
+python experiments/manuscript_figure_source_data/rebuild_manifest.py
 ```

@@ -155,12 +155,15 @@ python experiments/baseline_comparison/scripts/summarize_split_baseline_results.
 
 ## Reproducing Manuscript Figures
 
-The submission figures and their panel-level CSV source data are stored in:
+Submission figures and authoritative panel-level CSV source data are separated:
 
 ```text
-experiments/result_analysis/
-experiments/manuscript_figure_source_data/
+experiments/result_analysis/                  # Figures and figure manifest only
+experiments/manuscript_figure_source_data/    # Sole authoritative CSV source-data tree
 ```
+
+`experiments/result_analysis/figure_source_map.csv` links every manuscript
+panel to the corresponding canonical CSV without copying the table.
 
 The figure-generation scripts are retained under `experiments/`:
 

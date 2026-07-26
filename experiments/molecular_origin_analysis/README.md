@@ -44,7 +44,7 @@ molecular_origin_analysis/
 |-- tests/                   # adapter, cache, chemistry, and smoke tests
 |-- requirements_extra.txt
 |-- run_all.py               # only analysis entrypoint
-`-- package_source_data.py   # package final figures and panel CSVs
+`-- package_source_data.py   # package authoritative panel CSVs
 ```
 
 ## Environment
@@ -210,8 +210,8 @@ rerunning inference, with:
 python experiments\molecular_origin_analysis\run_all.py --stage figures --force
 ```
 
-Package only the manuscript-facing figures and exact plotted CSVs into the
-repository-level source-data directory:
+Package the exact plotted CSVs into the repository-level authoritative
+source-data directory:
 
 ```powershell
 python experiments\molecular_origin_analysis\package_source_data.py
@@ -219,7 +219,8 @@ python experiments\molecular_origin_analysis\package_source_data.py
 
 The resulting bundle is
 `experiments/manuscript_figure_source_data/molecular_origin_analysis/` and
-contains a SHA-256 manifest, column dictionary and figure-to-panel data map.
+contains a SHA-256 source-data manifest and column dictionary. Submission
+figures remain under `experiments/result_analysis/figures/`.
 
 The independent manuscript materials and captions are in
 `results/manuscript/`; no existing LaTeX or manuscript file is edited.

@@ -1,9 +1,11 @@
-"""Package the exact manuscript figures and their auditable source-data CSVs.
+"""Package exact manuscript figures and link them to canonical source data.
 
 The author-supplied PNG files are treated as the canonical manuscript views.
 Native PDF/SVG exports are copied when the matching plotting workflow provides
 them. Raster-derived PDF/SVG files are explicitly identified in the manifest
-when no matching native vector export exists.
+when no matching native vector export exists. Panel-level CSV files are never
+copied into this result package; they remain under the single authoritative
+``experiments/manuscript_figure_source_data`` tree.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import base64
 import csv
 import hashlib
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -22,6 +25,9 @@ from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODULE_ROOT = PROJECT_ROOT / "experiments" / "result_analysis"
+SOURCE_DATA_ROOT = (
+    PROJECT_ROOT / "experiments" / "manuscript_figure_source_data"
+)
 DEFAULT_MANUSCRIPT_FIGURE_DIR = (
     Path.home() / "Downloads" / "OD-TwoColumn (June 2026)" / "Fig"
 )
@@ -113,12 +119,14 @@ FIGURES = (
         "figureS_heat_capacity_size_control",
         "figureS_heat_capacity_size_control.png",
         (
-            "experiments/manuscript_figure_source_data/molecular_origin_analysis/"
-            "figures/figure_si_heat_capacity_size_control.pdf"
+            "experiments/result_analysis/figures/"
+            "figureS_heat_capacity_size_control/"
+            "figureS_heat_capacity_size_control.pdf"
         ),
         (
-            "experiments/manuscript_figure_source_data/molecular_origin_analysis/"
-            "figures/figure_si_heat_capacity_size_control.svg"
+            "experiments/result_analysis/figures/"
+            "figureS_heat_capacity_size_control/"
+            "figureS_heat_capacity_size_control.svg"
         ),
         "native Matplotlib export from the matching molecular-origin workflow",
     ),
@@ -170,133 +178,208 @@ def project_path(relative: str) -> Path:
     return PROJECT_ROOT / Path(relative)
 
 
-def application_csv(name: str) -> Path:
-    return (
-        PROJECT_ROOT
-        / "experiments"
-        / "computational_application_case"
-        / "chapter_results"
-        / "csv"
-        / name
-    )
+def canonical_source(*parts: str) -> Path:
+    return SOURCE_DATA_ROOT.joinpath(*parts)
 
 
 def source_specs() -> dict[str, list[SourceSpec]]:
     sources: dict[str, list[SourceSpec]] = {
         "auditable_virtual_screening_validation": [
             SourceSpec(
-                application_csv("candidate_screening_trajectory_608.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "panel_a_candidate_space_funnel.csv",
+                ),
+                "a",
+                "Figure-ready candidate-space funnel counts.",
+            ),
+            SourceSpec(
+                canonical_source(
+                    "computational_application_case",
+                    "candidate_screening_trajectory_608.csv",
+                ),
                 "a",
                 "Complete 608-candidate screening trajectory and hard constraints.",
             ),
             SourceSpec(
-                application_csv("chemical_identity_audit_old_unseen_pool.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "chemical_identity_audit_old_unseen_pool.csv",
+                ),
                 "b",
                 "Legacy SMILES-based novelty audit.",
             ),
             SourceSpec(
-                application_csv("standard_inchikey_identity_audit_608.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "standard_inchikey_identity_audit_608.csv",
+                ),
                 "b",
                 "Charge-aware InChIKey identity audit for the evaluated pool.",
             ),
             SourceSpec(
-                application_csv("pareto_rank1_all_candidates.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "pareto_rank1_all_candidates.csv",
+                ),
                 "a",
                 "All twelve Pareto-rank-1 candidates.",
             ),
             SourceSpec(
-                application_csv("pareto_rank1_top8_selection.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "pareto_rank1_top8_selection.csv",
+                ),
                 "a,f",
                 "Deterministic Pareto-rank-1 to Top-8 selection record.",
             ),
             SourceSpec(
-                application_csv("final_candidate_constraint_margins.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "final_candidate_constraint_margins.csv",
+                ),
                 "c",
                 "Hard-constraint margins for the formal shortlist.",
             ),
             SourceSpec(
-                application_csv("reference_bootstrap_candidate_selection.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "reference_bootstrap_candidate_selection.csv",
+                ),
                 "d",
                 "Candidate-level bootstrap selection frequencies.",
             ),
             SourceSpec(
-                application_csv("cross_protocol_decision_matrix.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "cross_protocol_decision_matrix.csv",
+                ),
                 "e",
                 "Primary and sensitivity-protocol decisions.",
             ),
             SourceSpec(
-                application_csv("downstream_qualification_priorities.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "downstream_qualification_priorities.csv",
+                ),
                 "f",
                 "Automatically selected qualification roles.",
             ),
             SourceSpec(
-                application_csv("qualification_role_selection_audit.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "qualification_role_selection_audit.csv",
+                ),
                 "f",
                 "Qualification-role eligibility and deterministic selection audit.",
             ),
             SourceSpec(
-                application_csv("final_prioritized_candidates.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "final_prioritized_candidates.csv",
+                ),
                 "a,c,e,f",
                 "Formal eight-candidate shortlist.",
             ),
         ],
         "figureS_application_decision_stability": [
             SourceSpec(
-                application_csv("threshold_sensitivity.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "threshold_sensitivity.csv",
+                ),
                 "a",
                 "Prespecified threshold-grid sensitivity results.",
             ),
             SourceSpec(
-                application_csv("reference_bootstrap_iterations.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "reference_bootstrap_iterations.csv",
+                ),
                 "b",
                 "Bootstrap replicate Top-8 overlap results.",
             ),
             SourceSpec(
-                application_csv("reference_bootstrap_candidate_selection.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "reference_bootstrap_candidate_selection.csv",
+                ),
                 "c",
                 "Candidate-level bootstrap selection frequencies.",
             ),
         ],
         "figureS_application_derived_metrics": [
             SourceSpec(
-                application_csv("reference_cell_metrics_temperature.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "reference_cell_metrics_temperature.csv",
+                ),
                 "a,b",
                 "Temperature-resolved Joule and conditional temperature-rise metrics.",
             ),
             SourceSpec(
-                application_csv("downstream_qualification_priorities.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "downstream_qualification_priorities.csv",
+                ),
                 "a,b",
                 "Candidate identities displayed in the SI curves.",
             ),
         ],
         "reference_cell_scenario_audited": [
             SourceSpec(
-                application_csv("reference_cell_metrics_temperature.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "panel_a_reference_cell_scenario_parameters.csv",
+                ),
+                "a",
+                "Standardized 60-s constant-current scenario parameters.",
+            ),
+            SourceSpec(
+                canonical_source(
+                    "computational_application_case",
+                    "reference_cell_metrics_temperature.csv",
+                ),
                 "b,d,e",
                 "Temperature-resolved electrolyte-path engineering metrics.",
             ),
             SourceSpec(
-                application_csv("candidate_screening_trajectory_608.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "candidate_screening_trajectory_608.csv",
+                ),
                 "c",
                 "Screened-population thermal-property coordinates.",
             ),
             SourceSpec(
-                application_csv("downstream_qualification_priorities.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "downstream_qualification_priorities.csv",
+                ),
                 "b,c,d",
                 "Qualification leads highlighted in the post hoc mapping.",
             ),
             SourceSpec(
-                application_csv("extended_endpoint_transport_tradeoff.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "extended_endpoint_transport_tradeoff.csv",
+                ),
                 "e",
                 "Cold-hot endpoint resistance ratios.",
             ),
             SourceSpec(
-                application_csv("reference_cell_candidate_summary.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "reference_cell_candidate_summary.csv",
+                ),
                 "f",
                 "Reference-population exceedance context.",
             ),
             SourceSpec(
-                application_csv("final_prioritized_candidates.csv"),
+                canonical_source(
+                    "computational_application_case",
+                    "final_prioritized_candidates.csv",
+                ),
                 "b,c,d,e,f",
                 "Formal shortlist fixed before reference-cell mapping.",
             ),
@@ -394,8 +477,6 @@ def source_specs() -> dict[str, list[SourceSpec]]:
     )
     interpretability_sources: list[SourceSpec] = []
     for path in sorted(interpretability_dir.glob("*.csv")):
-        if path.name == "source_figure_audit.csv":
-            continue
         if "interpretability_results_source_data_" in path.name:
             suffix = path.stem.rsplit("_", 1)[-1].lower()
             panel = "g-i (master table)" if suffix == "m" else suffix
@@ -415,7 +496,16 @@ def source_specs() -> dict[str, list[SourceSpec]]:
             )
         )
     sources["interpretability"] = interpretability_sources
-    sources["Intro-method"] = []
+    sources["Intro-method"] = [
+        SourceSpec(
+            canonical_source(
+                "Intro-method",
+                "Intro-method_panel_inventory.csv",
+            ),
+            "a-e",
+            "Non-quantitative panel inventory; the schematic has no plotted CSV data.",
+        )
+    ]
     return sources
 
 
@@ -474,7 +564,14 @@ def write_raster_svg(png_path: Path, svg_path: Path) -> None:
 def write_raster_pdf(png_path: Path, pdf_path: Path) -> None:
     with Image.open(png_path) as image:
         rgb = image.convert("RGB")
-        rgb.save(pdf_path, "PDF", resolution=600.0)
+        fixed_timestamp = time.gmtime(0)
+        rgb.save(
+            pdf_path,
+            "PDF",
+            resolution=600.0,
+            creationDate=fixed_timestamp,
+            modDate=fixed_timestamp,
+        )
 
 
 def write_tiff(png_path: Path, tiff_path: Path) -> None:
@@ -495,138 +592,20 @@ def copy_if_different(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
-def add_generated_source_tables(
-    figure_id: str,
-    target_dir: Path,
-) -> list[tuple[Path, str, str, str]]:
-    generated: list[tuple[Path, str, str, str]] = []
-    if figure_id == "auditable_virtual_screening_validation":
-        path = target_dir / "panel_a_candidate_space_funnel.csv"
-        rows = [
-            {
-                "stage_order": 1,
-                "stage": "combinatorial_pairs",
-                "count": 900,
-                "provenance": "30 cations x 30 anions",
-            },
-            {
-                "stage_order": 2,
-                "stage": "InChI_identity_new_pool",
-                "count": 608,
-                "provenance": "standard_inchikey_identity_audit_608.csv",
-            },
-            {
-                "stage_order": 3,
-                "stage": "evaluated_by_primary_model",
-                "count": 608,
-                "provenance": "candidate_screening_trajectory_608.csv",
-            },
-            {
-                "stage_order": 4,
-                "stage": "hard_feasible",
-                "count": 26,
-                "provenance": "candidate_screening_trajectory_608.csv",
-            },
-            {
-                "stage_order": 5,
-                "stage": "Pareto_rank_1",
-                "count": 12,
-                "provenance": "pareto_rank1_all_candidates.csv",
-            },
-            {
-                "stage_order": 6,
-                "stage": "formal_shortlist",
-                "count": 8,
-                "provenance": "final_prioritized_candidates.csv",
-            },
-        ]
-        write_rows(path, ["stage_order", "stage", "count", "provenance"], rows)
-        generated.append(
-            (
-                path,
-                "a",
-                "Figure-ready candidate-space funnel counts.",
-                "derived from copied application CSVs and the prespecified 30 x 30 pool",
-            )
-        )
-    elif figure_id == "reference_cell_scenario_audited":
-        path = target_dir / "panel_a_reference_cell_scenario_parameters.csv"
-        rows = [
-            {"parameter": "electrode_area", "symbol": "A", "value": 100, "unit": "cm^2"},
-            {"parameter": "separator_thickness", "symbol": "L", "value": 100, "unit": "um"},
-            {"parameter": "electrolyte_volume", "symbol": "V", "value": 1.0, "unit": "mL"},
-            {"parameter": "constant_current", "symbol": "I", "value": 2.0, "unit": "A"},
-            {
-                "parameter": "convection_coefficient",
-                "symbol": "h",
-                "value": 10,
-                "unit": "W m^-2 K^-1",
-            },
-            {"parameter": "exposed_faces", "symbol": "N_f", "value": 2, "unit": "count"},
-            {"parameter": "stress_duration", "symbol": "t", "value": 60, "unit": "s"},
-        ]
-        write_rows(path, ["parameter", "symbol", "value", "unit"], rows)
-        generated.append(
-            (
-                path,
-                "a",
-                "Standardized 60-s constant-current scenario parameters.",
-                "transcribed from the audited plotting protocol",
-            )
-        )
-    elif figure_id == "Intro-method":
-        path = target_dir / "Intro-method_panel_inventory.csv"
-        rows = [
-            {
-                "panel": "a",
-                "content": "ionic-liquid application contexts",
-                "quantitative_source_data": "not applicable",
-            },
-            {
-                "panel": "b",
-                "content": "ion-pair concept and six target properties",
-                "quantitative_source_data": "not applicable",
-            },
-            {
-                "panel": "c",
-                "content": "experiment, simulation, descriptors, and machine learning",
-                "quantitative_source_data": "not applicable",
-            },
-            {
-                "panel": "d",
-                "content": "ILThermo query, API, matching, and sparse-label merge",
-                "quantitative_source_data": "not applicable",
-            },
-            {
-                "panel": "e",
-                "content": "MIPGraph architecture schematic",
-                "quantitative_source_data": "not applicable",
-            },
-        ]
-        write_rows(
-            path,
-            ["panel", "content", "quantitative_source_data"],
-            rows,
-        )
-        generated.append(
-            (
-                path,
-                "a-e",
-                "Non-quantitative panel inventory; the schematic has no plotted CSV data.",
-                "manual figure inventory",
-            )
-        )
-    return generated
-
-
 def package(
     manuscript_figure_dir: Path,
     destination: Path,
 ) -> None:
     figure_root = destination / "figures"
-    source_root = destination / "source_data"
     figure_root.mkdir(parents=True, exist_ok=True)
-    source_root.mkdir(parents=True, exist_ok=True)
+
+    legacy_source_root = destination / "source_data"
+    if legacy_source_root.exists():
+        if legacy_source_root.resolve().parent != destination.resolve():
+            raise RuntimeError(
+                f"Refusing to remove unexpected path: {legacy_source_root}"
+            )
+        shutil.rmtree(legacy_source_root)
 
     source_map = source_specs()
     manifest_rows: list[dict[str, object]] = []
@@ -637,9 +616,7 @@ def package(
         if not manuscript_png.is_file():
             raise FileNotFoundError(manuscript_png)
         figure_dir = figure_root / spec.figure_id
-        data_dir = source_root / spec.figure_id
         figure_dir.mkdir(parents=True, exist_ok=True)
-        data_dir.mkdir(parents=True, exist_ok=True)
 
         png_target = figure_dir / f"{spec.figure_id}.png"
         shutil.copy2(manuscript_png, png_target)
@@ -716,72 +693,50 @@ def package(
         for source in source_map[spec.figure_id]:
             if not source.path.is_file():
                 raise FileNotFoundError(source.path)
-            target = data_dir / source.path.name
-            shutil.copy2(source.path, target)
-            rows, columns = csv_shape(target)
-            origin = relative_origin(source.path)
+            rows, columns = csv_shape(source.path)
+            canonical_path = relative_origin(source.path)
             source_rows.append(
                 {
                     "figure_id": spec.figure_id,
                     "panel_mapping": source.panels,
-                    "csv_file": target.relative_to(destination).as_posix(),
+                    "csv_file": canonical_path,
                     "description": source.description,
-                    "origin": origin,
+                    "origin": canonical_path,
                     "rows": rows,
                     "columns": columns,
-                    "sha256": sha256(target),
-                }
-            )
-            manifest_rows.append(
-                {
-                    "artifact_type": "source_data",
-                    "figure_id": spec.figure_id,
-                    "panel_mapping": source.panels,
-                    "format": "csv",
-                    "relative_path": target.relative_to(destination).as_posix(),
-                    "origin": origin,
-                    "provenance": source.description,
-                    "bytes": target.stat().st_size,
-                    "rows": rows,
-                    "columns": columns,
-                    "width_px": "",
-                    "height_px": "",
-                    "sha256": sha256(target),
+                    "sha256": sha256(source.path),
                 }
             )
 
-        for target, panels, description, origin in add_generated_source_tables(
-            spec.figure_id,
-            data_dir,
-        ):
-            rows, columns = csv_shape(target)
-            source_rows.append(
-                {
-                    "figure_id": spec.figure_id,
-                    "panel_mapping": panels,
-                    "csv_file": target.relative_to(destination).as_posix(),
-                    "description": description,
-                    "origin": origin,
-                    "rows": rows,
-                    "columns": columns,
-                    "sha256": sha256(target),
-                }
-            )
+    auxiliary_root = (
+        figure_root / "molecular_origin_analysis" / "native_exports"
+    )
+    if auxiliary_root.is_dir():
+        for output in sorted(path for path in auxiliary_root.iterdir() if path.is_file()):
+            file_format = output.suffix.lower().lstrip(".")
+            width: int | str = ""
+            height: int | str = ""
+            if file_format in {"png", "tiff"}:
+                with Image.open(output) as image:
+                    width, height = image.size
             manifest_rows.append(
                 {
-                    "artifact_type": "source_data",
-                    "figure_id": spec.figure_id,
-                    "panel_mapping": panels,
-                    "format": "csv",
-                    "relative_path": target.relative_to(destination).as_posix(),
-                    "origin": origin,
-                    "provenance": description,
-                    "bytes": target.stat().st_size,
-                    "rows": rows,
-                    "columns": columns,
-                    "width_px": "",
-                    "height_px": "",
-                    "sha256": sha256(target),
+                    "artifact_type": "figure_auxiliary",
+                    "figure_id": "molecular_origin_analysis",
+                    "panel_mapping": "all",
+                    "format": file_format,
+                    "relative_path": output.relative_to(destination).as_posix(),
+                    "origin": relative_origin(output),
+                    "provenance": (
+                        "native molecular-origin workflow export retained for "
+                        "reproducibility; not the compact submitted view"
+                    ),
+                    "bytes": output.stat().st_size,
+                    "rows": "",
+                    "columns": "",
+                    "width_px": width,
+                    "height_px": height,
+                    "sha256": sha256(output),
                 }
             )
 
@@ -831,13 +786,15 @@ def package(
                 f"{spec.figure_id} formats are {sorted(formats)}, "
                 f"expected {sorted(expected_formats)}."
             )
-        if not any((source_root / spec.figure_id).glob("*.csv")):
+        if not source_map[spec.figure_id]:
             raise RuntimeError(f"No CSV mapping exists for {spec.figure_id}.")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Package manuscript figures and panel-level source data."
+        description=(
+            "Package manuscript figures and link canonical panel-level source data."
+        )
     )
     parser.add_argument(
         "--manuscript-figure-dir",

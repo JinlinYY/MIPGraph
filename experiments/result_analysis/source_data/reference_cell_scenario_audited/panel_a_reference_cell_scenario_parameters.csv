@@ -1,8 +1,0 @@
-﻿parameter,symbol,value,unit
-electrode_area,A,100,cm^2
-separator_thickness,L,100,um
-electrolyte_volume,V,1.0,mL
-constant_current,I,2.0,A
-convection_coefficient,h,10,W m^-2 K^-1
-exposed_faces,N_f,2,count
-stress_duration,t,60,s

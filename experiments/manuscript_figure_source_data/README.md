@@ -1,35 +1,43 @@
-# Manuscript figure source data
+# Authoritative manuscript figure source data
 
-该目录集中保存论文主图及其可审计 CSV 源数据。各子目录彼此独立，
-并提供图文件、面板级 CSV、文件映射及 SHA-256 完整性记录。
+该目录是论文所有面板级 CSV 的唯一权威位置。这里只保存处理后的作图源
+数据、字段字典、数据清单和说明文件；正式 PNG/SVG/PDF/TIFF 统一存放在
+`experiments/result_analysis/figures/`。
 
-## Bundles
+## 数据包
 
-1. `dataset_statistics/`
-   - 对应数据集统计图；
-   - 包含各面板的 CSV 源数据和当前图文件审计记录。
-2. `interpretability_feature_importance_4x3/`
-   - 对应模型可解释性与特征重要性图；
-   - 包含节点、边、官能团及汇总面板源数据。
-3. `performance_results/`
-   - 对应模型性能结果图；
-   - 包含各数据划分协议的预测散点与汇总指标。
-4. `molecular_origin_analysis/`
-   - 对应分子结构—宏观性质关系主图及 SI 热容尺寸控制图；
-   - 包含主图 a–d 的独立 CSV、SI CSV、列字典和 SHA-256 清单。
+1. `computational_application_case/`
+   - 身份审计、硬约束、Pareto、bootstrap、参考电芯映射等 18 个唯一 CSV。
+2. `dataset_statistics/`
+   - 数据集统计图 a–h 的面板级 CSV。
+3. `interpretability_feature_importance_4x3/`
+   - 可解释性、节点、边、官能团及汇总面板 CSV。
+4. `performance_results/`
+   - 六种性质散点、跨协议指标和汇总表。
+5. `molecular_origin_analysis/`
+   - 分子结构—宏观性质主图 a–d、SI 热容尺寸控制 CSV 及人工校订字段字典。
+6. `Intro-method/`
+   - 非定量概念图的面板内容清单。
 
-`manifest.csv` 是前三个既有数据包的总清单；新增的
-`molecular_origin_analysis/manifest.csv` 是该分析模块的自包含清单。
+## 权威清单
 
-替换前三个数据包中的图件或面板 CSV 后，重新生成校验清单：
+- `manifest.csv`：逐文件记录数据包、生产脚本、大小、行列数和 SHA-256。
+- `column_dictionary.csv`：汇总所有源表字段；人工校订定义标记为
+  `curated`，其余标记为 `producer-defined`。
+- `molecular_origin_analysis/column_dictionary.csv`：该分析的详细人工字段定义。
+
+重新生成总清单和字段目录：
 
 ```powershell
 python experiments\manuscript_figure_source_data\rebuild_manifest.py
 ```
 
-重新生成 molecular-origin 数据包：
+脚本会拒绝该目录中的图文件和逐字节重复 CSV，防止再次产生双重权威副本。
+
+重新生成 molecular-origin 源数据：
 
 ```powershell
 python experiments\molecular_origin_analysis\run_all.py --stage all
 python experiments\molecular_origin_analysis\package_source_data.py
+python experiments\manuscript_figure_source_data\rebuild_manifest.py
 ```
