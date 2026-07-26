@@ -47,7 +47,6 @@ FIGURE_DIR = OUTPUT_ROOT / "figures"
 TABLE_DIR = OUTPUT_ROOT / "tables"
 PAPER_DIR = PROJECT_ROOT / "LaTex-MIPGraph"
 PAPER_FIG_DIR = PAPER_DIR / "Fig"
-PAPER_SOURCE_DIR = PAPER_FIG_DIR / "source_data"
 PERFORMANCE_SOURCE_DIR = (
     PROJECT_ROOT
     / "experiments"
@@ -693,12 +692,6 @@ def build_priority_table() -> pd.DataFrame:
     return priority[columns]
 
 
-def _copy_source_data(paths: list[Path]) -> None:
-    PAPER_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
-    for path in paths:
-        shutil.copy2(path, PAPER_SOURCE_DIR / path.name)
-
-
 def make_evidence_figure(
     validation: pd.DataFrame,
     identity_counts: dict[str, int],
@@ -1075,22 +1068,6 @@ def main() -> int:
         stability,
         priority,
     )
-    source_paths = [
-        DATA_DIR / "whole_il_validation_summary.csv",
-        DATA_DIR / "whole_il_curve_validation.csv",
-        DATA_DIR / "whole_il_split_identity_audit.csv",
-        DATA_DIR / "whole_il_identity_audit_excluded_rows.csv",
-        DATA_DIR / "chemical_identity_audit_old_shortlist.csv",
-        DATA_DIR / "chemical_identity_audit_current_shortlist.csv",
-        DATA_DIR / "chemical_identity_audit_old_unseen_pool.csv",
-        DATA_DIR / "threshold_sensitivity.csv",
-        DATA_DIR / "candidate_selection_stability.csv",
-        DATA_DIR / "experimental_validation_priority.csv",
-        DATA_DIR / "feasibility_probability.csv",
-        DATA_DIR / "final_prioritized_candidates.csv",
-        AUDIT_DIR / "auditable_chapter_evidence.json",
-    ]
-    _copy_source_data(source_paths)
     for source_name in [
         "figure6_reference_cell_scenario.pdf",
         "figure6_reference_cell_scenario.png",

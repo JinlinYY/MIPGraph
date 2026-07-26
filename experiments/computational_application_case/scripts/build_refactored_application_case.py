@@ -61,7 +61,12 @@ FIGURE_DIR = PRIMARY_ROOT / "figures"
 TABLE_DIR = PRIMARY_ROOT / "tables"
 PAPER_DIR = PROJECT_ROOT / "LaTex-MIPGraph"
 PAPER_FIG_DIR = PAPER_DIR / "Fig"
-PAPER_SOURCE_DIR = PAPER_FIG_DIR / "source_data"
+MANUSCRIPT_SOURCE_ROOT = (
+    PROJECT_ROOT / "experiments" / "manuscript_figure_source_data"
+)
+APPLICATION_SOURCE_DIR = (
+    MANUSCRIPT_SOURCE_ROOT / "computational_application_case"
+)
 
 # Files produced by superseded application-case workflows.  They must never
 # coexist with the submission source-data bundle because several contain an
@@ -77,6 +82,26 @@ LEGACY_APPLICATION_SOURCE_NAMES = {
     "whole_il_curve_validation.csv",
     "whole_il_split_identity_audit.csv",
     "whole_il_identity_audit_excluded_rows.csv",
+}
+APPLICATION_PANEL_SOURCE_NAMES = {
+    "candidate_screening_trajectory_608.csv",
+    "chemical_identity_audit_old_unseen_pool.csv",
+    "cross_protocol_decision_matrix.csv",
+    "downstream_qualification_priorities.csv",
+    "extended_endpoint_transport_tradeoff.csv",
+    "final_candidate_constraint_margins.csv",
+    "final_prioritized_candidates.csv",
+    "panel_a_candidate_space_funnel.csv",
+    "panel_a_reference_cell_scenario_parameters.csv",
+    "pareto_rank1_all_candidates.csv",
+    "pareto_rank1_top8_selection.csv",
+    "qualification_role_selection_audit.csv",
+    "reference_bootstrap_candidate_selection.csv",
+    "reference_bootstrap_iterations.csv",
+    "reference_cell_candidate_summary.csv",
+    "reference_cell_metrics_temperature.csv",
+    "standard_inchikey_identity_audit_608.csv",
+    "threshold_sensitivity.csv",
 }
 
 MAIN_T_MIN = 298.15
@@ -1665,50 +1690,202 @@ def make_si_figures(
 
 
 def copy_source_data(paths: list[Path]) -> None:
-    PAPER_SOURCE_DIR.mkdir(parents=True,exist_ok=True)
-    legacy_paths = [PAPER_SOURCE_DIR / name for name in LEGACY_APPLICATION_SOURCE_NAMES]
-    legacy_paths.extend(PAPER_SOURCE_DIR.glob("figure_application_case*.csv"))
-    for legacy_path in legacy_paths:
-        if legacy_path.exists():
-            legacy_path.unlink()
+    """Publish panel-level CSVs to the sole manuscript source-data tree."""
+
+    APPLICATION_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+    legacy_paths = [
+        APPLICATION_SOURCE_DIR / name
+        for name in LEGACY_APPLICATION_SOURCE_NAMES
+    ]
+    legacy_paths.extend(
+        APPLICATION_SOURCE_DIR.glob("figure_application_case*.csv")
+    )
+    present_legacy = sorted(
+        path for path in legacy_paths if path.exists()
+    )
+    if present_legacy:
+        raise RuntimeError(
+            "Legacy application source data must be migrated or removed "
+            "explicitly before publication: "
+            + ", ".join(str(path) for path in present_legacy)
+        )
+
+    requested_names = {path.name for path in paths}
+    if requested_names != APPLICATION_PANEL_SOURCE_NAMES:
+        missing_names = sorted(
+            APPLICATION_PANEL_SOURCE_NAMES - requested_names
+        )
+        extra_names = sorted(
+            requested_names - APPLICATION_PANEL_SOURCE_NAMES
+        )
+        raise RuntimeError(
+            "Application source-data publication must contain the exact "
+            f"18-panel table set; missing={missing_names}, extra={extra_names}"
+        )
+    missing_paths = sorted(path for path in paths if not path.is_file())
+    if missing_paths:
+        raise FileNotFoundError(
+            "Application panel source tables are missing: "
+            + ", ".join(str(path) for path in missing_paths)
+        )
+
+    unexpected_existing = sorted(
+        path
+        for path in APPLICATION_SOURCE_DIR.glob("*.csv")
+        if path.name not in APPLICATION_PANEL_SOURCE_NAMES
+    )
+    if unexpected_existing:
+        raise RuntimeError(
+            "Unexpected CSVs are present in the canonical application "
+            "source-data directory: "
+            + ", ".join(str(path) for path in unexpected_existing)
+        )
 
     copied: list[Path] = []
     for path in paths:
-        if path.exists():
-            destination = PAPER_SOURCE_DIR / path.name
-            shutil.copy2(path,destination)
-            copied.append(destination)
+        if path.suffix.lower() != ".csv":
+            raise ValueError(
+                "Only panel-level CSVs may be published to the "
+                f"authoritative source-data directory: {path}"
+            )
+        destination = APPLICATION_SOURCE_DIR / path.name
+        shutil.copy2(path, destination)
+        copied.append(destination)
 
-    remaining_legacy = [
-        str(path) for path in legacy_paths if path.exists()
-    ]
-    if remaining_legacy:
-        raise RuntimeError(
-            "Legacy application source data remain in the submission bundle: "
-            + ", ".join(remaining_legacy)
-        )
+    if not copied:
+        raise RuntimeError("No application panel source-data CSVs were published")
 
-    manifest = {
-        "schema_version": 1,
-        "scope": "split application Figures 5 and 6 plus application-case Supporting Information",
-        "formal_prediction_source": "single primary random-IL checkpoint",
-        "cross_protocol_prediction_aggregation": "none",
-        "source_root": str(PRIMARY_ROOT),
-        "files": [
-            {
-                "name": path.name,
-                "sha256": protocol_inputs.file_sha256(path),
-            }
-            for path in sorted(copied, key=lambda item: item.name)
-        ],
-    }
-    (PAPER_SOURCE_DIR / "application_source_data_manifest.json").write_text(
-        json.dumps(manifest,indent=2,ensure_ascii=False),encoding="utf-8"
+    manifest_module_path = MANUSCRIPT_SOURCE_ROOT / "rebuild_manifest.py"
+    spec = importlib.util.spec_from_file_location(
+        "manuscript_source_manifest", manifest_module_path
     )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(
+            f"Unable to load source-data catalog builder: {manifest_module_path}"
+        )
+    manifest_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(manifest_module)
+    manifest_module.main()
+
+
+def write_panel_a_source_tables(
+    identity_counts: dict[str, int],
+    full_trace: pd.DataFrame,
+    rank_one: pd.DataFrame,
+    final: pd.DataFrame,
+) -> tuple[Path, Path]:
+    """Write the two schematic-panel tables from the same computed state."""
+
+    evaluated = full_trace[
+        full_trace["candidate_type"].eq("unseen_pair_recombination")
+    ].copy()
+    funnel_path = DATA_DIR / "panel_a_candidate_space_funnel.csv"
+    pd.DataFrame(
+        [
+            (1, "combinatorial_pairs", 900, "30 cations x 30 anions"),
+            (
+                2,
+                "InChI_identity_new_pool",
+                identity_counts["new_valid_unseen_pool"],
+                "standard_inchikey_identity_audit_608.csv",
+            ),
+            (
+                3,
+                "evaluated_by_primary_model",
+                evaluated["candidate_id"].nunique(),
+                "candidate_screening_trajectory_608.csv",
+            ),
+            (
+                4,
+                "hard_feasible",
+                evaluated.loc[
+                    evaluated["final_feasible"].fillna(False),
+                    "candidate_id",
+                ].nunique(),
+                "candidate_screening_trajectory_608.csv",
+            ),
+            (
+                5,
+                "Pareto_rank_1",
+                rank_one["candidate_id"].nunique(),
+                "pareto_rank1_all_candidates.csv",
+            ),
+            (
+                6,
+                "formal_shortlist",
+                final["candidate_id"].nunique(),
+                "final_prioritized_candidates.csv",
+            ),
+        ],
+        columns=["stage_order", "stage", "count", "provenance"],
+    ).to_csv(funnel_path, index=False)
+
+    config = load_case_config(
+        CASE_DIR / "configs" / "auditable_virtual_screening.yaml"
+    )
+    scenario = config["reference_cell"]
+    scenario_path = DATA_DIR / "panel_a_reference_cell_scenario_parameters.csv"
+    pd.DataFrame(
+        [
+            (
+                "electrode_area",
+                "A",
+                f"{float(scenario['electrode_area_cm2']):g}",
+                "cm^2",
+            ),
+            (
+                "separator_thickness",
+                "L",
+                f"{float(scenario['separator_thickness_um']):g}",
+                "um",
+            ),
+            (
+                "electrolyte_volume",
+                "V",
+                f"{float(scenario['electrolyte_volume_mL']):.1f}",
+                "mL",
+            ),
+            (
+                "constant_current",
+                "I",
+                f"{float(scenario['charge_discharge_current_A']):.1f}",
+                "A",
+            ),
+            (
+                "convection_coefficient",
+                "h",
+                (
+                    f"{float(scenario['convective_heat_transfer_coefficient_W_m2_K']):g}"
+                ),
+                "W m^-2 K^-1",
+            ),
+            (
+                "exposed_faces",
+                "N_f",
+                f"{int(scenario['exposed_face_count'])}",
+                "count",
+            ),
+            (
+                "stress_duration",
+                "t",
+                f"{float(scenario['transient_duration_s']):g}",
+                "s",
+            ),
+        ],
+        columns=["parameter", "symbol", "value", "unit"],
+    ).to_csv(scenario_path, index=False)
+    return funnel_path, scenario_path
 
 
 def main() -> int:
-    for directory in [DATA_DIR,AUDIT_DIR,FIGURE_DIR,TABLE_DIR,PAPER_FIG_DIR,PAPER_SOURCE_DIR]:
+    for directory in [
+        DATA_DIR,
+        AUDIT_DIR,
+        FIGURE_DIR,
+        TABLE_DIR,
+        PAPER_FIG_DIR,
+        APPLICATION_SOURCE_DIR,
+    ]:
         directory.mkdir(parents=True,exist_ok=True)
     # Redirect the reusable audit module to the primary-output namespace.
     audit.OUTPUT_ROOT=PRIMARY_ROOT
@@ -1731,6 +1908,12 @@ def main() -> int:
     heat_audit,heat_summary,heat_population=build_reference_cell_heat_resistance_audit(final)
     extreme_neighbors,extreme_summary=build_extreme_property_audit(final)
     priorities=attach_extreme_audit_to_priorities(priorities,extreme_summary)
+    panel_a_funnel, panel_a_scenario = write_panel_a_source_tables(
+        identity_counts,
+        full_trace,
+        rank_one,
+        final,
+    )
     primary_library=pd.read_csv(DATA_DIR/"candidate_library.csv",low_memory=False)
     identity_digest=protocol_inputs.identity_sha256(primary_library)
     protocol_provenance=[]
@@ -1796,17 +1979,11 @@ def main() -> int:
     (AUDIT_DIR/"refactored_application_evidence.json").write_text(json.dumps(evidence,indent=2,ensure_ascii=False),encoding="utf-8")
     copy_source_data([
         DATA_DIR/"chemical_identity_audit_old_unseen_pool.csv",
-        DATA_DIR/"chemical_identity_audit_old_shortlist.csv",
-        DATA_DIR/"chemical_identity_audit_current_shortlist.csv",
         DATA_DIR/"standard_inchikey_identity_audit_608.csv",
-        DATA_DIR/"observed_reference_selection_audit.csv",
         DATA_DIR/"threshold_sensitivity.csv",
-        DATA_DIR/"candidate_selection_stability.csv",
         DATA_DIR/"reference_bootstrap_iterations.csv",
         DATA_DIR/"reference_bootstrap_candidate_selection.csv",
-        DATA_DIR/"reference_bootstrap_summary.csv",
         DATA_DIR/"cross_protocol_decision_matrix.csv",
-        DATA_DIR/"cross_protocol_summary.csv",
         DATA_DIR/"downstream_qualification_priorities.csv",
         DATA_DIR/"qualification_role_selection_audit.csv",
         DATA_DIR/"pareto_rank1_all_candidates.csv",
@@ -1817,17 +1994,8 @@ def main() -> int:
         DATA_DIR/"final_prioritized_candidates.csv",
         DATA_DIR/"reference_cell_candidate_summary.csv",
         DATA_DIR/"reference_cell_metrics_temperature.csv",
-        DATA_DIR/"reference_cell_heat_resistance_contribution_audit.csv",
-        DATA_DIR/"reference_cell_heat_resistance_contribution_summary.csv",
-        DATA_DIR/"reference_cell_heat_resistance_population_summary.csv",
-        DATA_DIR/"extreme_property_nearest_neighbors.csv",
-        DATA_DIR/"extreme_property_audit.csv",
-        AUDIT_DIR/"reference_cell_scenario.json",
-        AUDIT_DIR/"final_output_audit.json",
-        AUDIT_DIR/"refactored_application_evidence.json",
-        AUDIT_DIR/"protected_manuscript_scope_hashes.json",
-        TABLE_DIR/"application_figure_captions_bilingual.tex",
-        CASE_DIR/"APPLICATION_CHAPTER_CHANGELOG.md",
+        panel_a_funnel,
+        panel_a_scenario,
     ])
     print(json.dumps(evidence,indent=2,ensure_ascii=False))
     print("Modified manuscript scope: application chapter only")

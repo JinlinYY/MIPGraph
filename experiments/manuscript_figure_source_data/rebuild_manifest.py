@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import sys
 from pathlib import Path
 from typing import Iterable
 
-
 ROOT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from field_definitions import definition_for
+
+
 PROJECT_ROOT = ROOT.parents[1]
 MANIFEST_PATH = ROOT / "manifest.csv"
 COLUMN_DICTIONARY_PATH = ROOT / "column_dictionary.csv"
@@ -23,15 +29,11 @@ PRODUCERS = {
     "Intro-method": "manual figure inventory",
     "computational_application_case": (
         "experiments/computational_application_case/"
-        "scripts/build_auditable_evidence.py"
+        "scripts/build_refactored_application_case.py"
     ),
     "dataset_statistics": (
         "experiments/dataset_analysis/scripts/"
-        "plot_dataset_statistics_nature.py"
-    ),
-    "interpretability_feature_importance_4x3": (
-        "experiments/interpretability/scripts/"
-        "compose_interpretability_four_by_three.py"
+        "export_dataset_statistics_source_data.py"
     ),
     "molecular_origin_analysis": (
         "experiments/molecular_origin_analysis/package_source_data.py"
@@ -62,6 +64,47 @@ def csv_header(path: Path) -> list[str]:
         return next(csv.reader(handle), [])
 
 
+def csv_value_types(path: Path) -> dict[str, str]:
+    """Infer the physical CSV storage type of each field."""
+
+    precedence = {
+        "empty": 0,
+        "boolean": 1,
+        "integer": 2,
+        "number": 3,
+        "string": 4,
+    }
+
+    def scalar_type(value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            return "empty"
+        if stripped.lower() in {"true", "false"}:
+            return "boolean"
+        try:
+            integer = int(stripped)
+        except ValueError:
+            integer = None
+        if integer is not None and str(integer) == stripped:
+            return "integer"
+        try:
+            float(stripped)
+        except ValueError:
+            return "string"
+        return "number"
+
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = reader.fieldnames or []
+        inferred = {field: "empty" for field in fields}
+        for row in reader:
+            for field in fields:
+                candidate = scalar_type(row.get(field, ""))
+                if precedence[candidate] > precedence[inferred[field]]:
+                    inferred[field] = candidate
+    return inferred
+
+
 def write_csv(
     path: Path,
     fieldnames: tuple[str, ...],
@@ -80,11 +123,35 @@ def bundle_name(path: Path) -> str:
     return relative.parts[0]
 
 
-def producer_path(bundle: str) -> str:
+def producer_path(bundle: str, source_file: str) -> str:
     if bundle == "_catalog":
         return (
             "experiments/manuscript_figure_source_data/"
             "rebuild_manifest.py"
+        )
+    if bundle == "interpretability_feature_importance_4x3":
+        if source_file.startswith("interpretability_results_source_data_"):
+            return (
+                "experiments/interpretability/scripts/"
+                "plot_interpretability_results_current.py"
+            )
+        if source_file in {
+            "feature_importance_heatmap_source_data_nodes.csv",
+            "feature_importance_heatmap_source_data_edges.csv",
+            "feature_importance_heatmap_source_data_functional_groups.csv",
+        }:
+            return (
+                "il_property_prediction/scripts/"
+                "compute_feature_importance_heatmap.py"
+            )
+        if source_file.startswith("feature_importance_heatmap"):
+            return (
+                "experiments/interpretability/scripts/"
+                "plot_feature_importance_summary.py"
+            )
+        raise KeyError(
+            "No interpretability producer is registered for "
+            f"{source_file!r}"
         )
     try:
         return PRODUCERS[bundle]
@@ -95,9 +162,13 @@ def producer_path(bundle: str) -> str:
 def panel_source_files() -> list[Path]:
     excluded = {MANIFEST_PATH.resolve(), COLUMN_DICTIONARY_PATH.resolve()}
     return sorted(
-        path
-        for path in ROOT.rglob("*.csv")
-        if path.resolve() not in excluded and path.name != "manifest.csv"
+        (
+            path
+            for path in ROOT.rglob("*.csv")
+            if path.resolve() not in excluded
+            and path.name != "manifest.csv"
+        ),
+        key=lambda path: path.relative_to(ROOT).as_posix(),
     )
 
 
@@ -112,6 +183,30 @@ def assert_data_only() -> None:
         raise RuntimeError(
             "Figure files are not allowed in the authoritative source-data "
             f"directory:\n{details}"
+        )
+
+
+def assert_no_legacy_manuscript_source_copies() -> None:
+    """Reject known former manuscript source-data publication locations."""
+
+    forbidden_directories = (
+        PROJECT_ROOT / "experiments" / "result_analysis" / "source_data",
+        PROJECT_ROOT / "result_fig" / "source_data",
+        PROJECT_ROOT / "LaTex-MIPGraph" / "Fig" / "source_data",
+    )
+    offenders = [
+        path
+        for path in forbidden_directories
+        if path.exists() and any(item.is_file() for item in path.rglob("*"))
+    ]
+    latex_figure_dir = PROJECT_ROOT / "LaTex-MIPGraph" / "Fig"
+    if latex_figure_dir.exists():
+        offenders.extend(sorted(latex_figure_dir.glob("*.csv")))
+    if offenders:
+        details = "\n".join(f"- {path}" for path in offenders)
+        raise RuntimeError(
+            "Legacy manuscript source-data copies were detected outside the "
+            f"authoritative directory:\n{details}"
         )
 
 
@@ -159,14 +254,17 @@ def rebuild_column_dictionary(paths: list[Path]) -> None:
             continue
         bundle = bundle_name(path)
         relative_to_bundle = path.relative_to(ROOT / bundle).as_posix()
+        value_types = csv_value_types(path)
         for column in csv_header(path):
-            description, unit = definitions.get(
-                (bundle, path.name, column),
-                (
-                    "Column retained verbatim from the producer source table.",
-                    "As reported in the source table.",
-                ),
-            )
+            local_definition = definitions.get((bundle, path.name, column))
+            if local_definition is None:
+                description, unit, definition_status = definition_for(
+                    bundle,
+                    column,
+                )
+            else:
+                description, unit = local_definition
+                definition_status = "curated-local"
             rows.append(
                 {
                     "bundle": bundle,
@@ -174,12 +272,12 @@ def rebuild_column_dictionary(paths: list[Path]) -> None:
                     "column": column,
                     "description": description,
                     "unit_or_scale": unit,
-                    "definition_status": (
-                        "curated"
-                        if (bundle, path.name, column) in definitions
-                        else "producer-defined"
+                    "storage_type": value_types[column],
+                    "definition_status": definition_status,
+                    "producer_path": producer_path(
+                        bundle,
+                        relative_to_bundle,
                     ),
-                    "producer_path": producer_path(bundle),
                 }
             )
     write_csv(
@@ -190,6 +288,7 @@ def rebuild_column_dictionary(paths: list[Path]) -> None:
             "column",
             "description",
             "unit_or_scale",
+            "storage_type",
             "definition_status",
             "producer_path",
         ),
@@ -215,7 +314,12 @@ def rebuild_manifest(paths: list[Path]) -> None:
                 "destination_relative_path": path.relative_to(
                     PROJECT_ROOT
                 ).as_posix(),
-                "producer_path": producer_path(bundle),
+                "producer_path": producer_path(
+                    bundle,
+                    path.relative_to(ROOT / bundle).as_posix()
+                    if bundle != "_catalog"
+                    else path.name,
+                ),
                 "bytes": path.stat().st_size,
                 "rows": rows,
                 "columns": columns,
@@ -241,6 +345,7 @@ def rebuild_manifest(paths: list[Path]) -> None:
 
 def main() -> None:
     assert_data_only()
+    assert_no_legacy_manuscript_source_copies()
     paths = panel_source_files()
     assert_no_duplicate_source_tables(paths)
     rebuild_column_dictionary(paths)

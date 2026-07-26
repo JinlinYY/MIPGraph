@@ -22,8 +22,9 @@
 ## 权威清单
 
 - `manifest.csv`：逐文件记录数据包、生产脚本、大小、行列数和 SHA-256。
-- `column_dictionary.csv`：汇总所有源表字段；人工校订定义标记为
-  `curated`，其余标记为 `producer-defined`。
+- `column_dictionary.csv`：汇总所有源表字段的语义、单位/尺度、CSV
+  存储类型、定义来源和生产脚本。定义来源分为 `curated-common`、
+  `curated-bundle`、`curated-local` 和 `schema-rule`；不允许占位说明。
 - `molecular_origin_analysis/column_dictionary.csv`：该分析的详细人工字段定义。
 
 重新生成总清单和字段目录：
@@ -33,6 +34,11 @@ python experiments\manuscript_figure_source_data\rebuild_manifest.py
 ```
 
 脚本会拒绝该目录中的图文件和逐字节重复 CSV，防止再次产生双重权威副本。
+
+应用案例生成器只向
+`computational_application_case/` 发布 Figure 5、Figure 6 和对应 SI
+实际使用的 18 个面板表，并在发布后自动重建总字段字典和清单；不再向
+`LaTex-MIPGraph/Fig/source_data/` 创建第二套副本。
 
 重新生成 molecular-origin 源数据：
 

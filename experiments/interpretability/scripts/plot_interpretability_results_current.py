@@ -330,6 +330,7 @@ def family_heatmap(ax: plt.Axes,
 
 
 def write_sources(output_dir: Path, sources: dict[str, pd.DataFrame]) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     for panel, df in sources.items():
         df.to_csv(output_dir / f"interpretability_results_source_data_{panel}.csv",
                   index=False)
@@ -341,6 +342,7 @@ def create_figure(pred_long_path: Path,
                   metrics_json_path: Path,
                   family_path: Path,
                   output_dir: Path,
+                  source_data_dir: Path,
                   name: str,
                   dpi: int) -> None:
     long = pd.read_csv(pred_long_path)
@@ -390,7 +392,7 @@ def create_figure(pred_long_path: Path,
     }.items():
         fig.savefig(output_dir / f"{name}.{ext}", **kwargs)
     plt.close(fig)
-    write_sources(output_dir, sources)
+    write_sources(source_data_dir, sources)
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
@@ -413,6 +415,14 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
                                      "per_il_family_assignment.csv"))
     parser.add_argument("--output-dir", type=Path,
                         default=Path("LaTex-MIPGraph/Fig"))
+    parser.add_argument(
+        "--source-data-dir",
+        type=Path,
+        default=Path(
+            "experiments/manuscript_figure_source_data/"
+            "interpretability_feature_importance_4x3"
+        ),
+    )
     parser.add_argument("--name", default="interpretability_results")
     parser.add_argument("--dpi", type=int, default=600)
     return parser.parse_args(list(argv) if argv is not None else None)
@@ -422,7 +432,8 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
     args = parse_args(argv)
     create_figure(args.pred_long, args.pred_wide, args.metrics_log,
                   args.metrics_json, args.family_table,
-                  args.output_dir, args.name, args.dpi)
+                  args.output_dir, args.source_data_dir,
+                  args.name, args.dpi)
     print(f"Wrote {args.output_dir / (args.name + '.png')}")
 
 

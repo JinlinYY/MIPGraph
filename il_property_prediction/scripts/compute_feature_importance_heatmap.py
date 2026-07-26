@@ -627,6 +627,17 @@ def parse_args() -> argparse.Namespace:
         default="../LaTex-MIPGraph/Fig/feature_importance_heatmap",
         help="Output figure prefix, relative to il_property_prediction/ unless absolute.",
     )
+    parser.add_argument(
+        "--source-data-dir",
+        default=(
+            "../experiments/manuscript_figure_source_data/"
+            "interpretability_feature_importance_4x3"
+        ),
+        help=(
+            "Authoritative CSV output directory, relative to "
+            "il_property_prediction/ unless absolute."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -635,21 +646,29 @@ def main() -> None:
     args.checkpoint = resolve_path(args.checkpoint, PROJECT_DIR)
     args.split = resolve_path(args.split, PROJECT_DIR)
     out_prefix = resolve_path(args.out_prefix, PROJECT_DIR)
+    source_data_dir = resolve_path(args.source_data_dir, PROJECT_DIR)
     out_prefix.parent.mkdir(parents=True, exist_ok=True)
+    source_data_dir.mkdir(parents=True, exist_ok=True)
 
     node_df, edge_df, fg_df, summary = compute_importance(args)
-    node_df.to_csv(out_prefix.with_name(out_prefix.name + "_source_data_nodes.csv"), index=False)
-    edge_df.to_csv(out_prefix.with_name(out_prefix.name + "_source_data_edges.csv"), index=False)
-    fg_df.to_csv(out_prefix.with_name(out_prefix.name + "_source_data_functional_groups.csv"), index=False)
+    node_path = source_data_dir / f"{out_prefix.name}_source_data_nodes.csv"
+    edge_path = source_data_dir / f"{out_prefix.name}_source_data_edges.csv"
+    functional_group_path = (
+        source_data_dir
+        / f"{out_prefix.name}_source_data_functional_groups.csv"
+    )
+    node_df.to_csv(node_path, index=False)
+    edge_df.to_csv(edge_path, index=False)
+    fg_df.to_csv(functional_group_path, index=False)
     with out_prefix.with_name(out_prefix.name + "_summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     plot_heatmap(node_df, edge_df, fg_df, out_prefix, args.top_functional_groups)
     print(
         {
             "figure": str(out_prefix.with_suffix(".png")),
-            "nodes": str(out_prefix.with_name(out_prefix.name + "_source_data_nodes.csv")),
-            "edges": str(out_prefix.with_name(out_prefix.name + "_source_data_edges.csv")),
-            "functional_groups": str(out_prefix.with_name(out_prefix.name + "_source_data_functional_groups.csv")),
+            "nodes": str(node_path),
+            "edges": str(edge_path),
+            "functional_groups": str(functional_group_path),
             "summary": summary,
         }
     )

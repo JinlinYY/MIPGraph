@@ -601,11 +601,11 @@ def package(
 
     legacy_source_root = destination / "source_data"
     if legacy_source_root.exists():
-        if legacy_source_root.resolve().parent != destination.resolve():
-            raise RuntimeError(
-                f"Refusing to remove unexpected path: {legacy_source_root}"
-            )
-        shutil.rmtree(legacy_source_root)
+        raise RuntimeError(
+            "Legacy copied source data were detected at "
+            f"{legacy_source_root}. Migrate or remove that directory "
+            "explicitly before rebuilding the figure-only results package."
+        )
 
     source_map = source_specs()
     manifest_rows: list[dict[str, object]] = []

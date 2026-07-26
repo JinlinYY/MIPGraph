@@ -11,4 +11,6 @@ method.png -filter -diff -merge -text
 *.tiff filter=lfs diff=lfs merge=lfs -text
 *.xlsx filter=lfs diff=lfs merge=lfs -text
 *.xls filter=lfs diff=lfs merge=lfs -text
-experiments/manuscript_figure_source_data/computational_application_case/cross_protocol_decision_matrix.csv -text
+# Canonical manuscript CSVs are byte-audited. Preserve their recorded bytes.
+experiments/manuscript_figure_source_data/*.csv -text whitespace=cr-at-eol
+experiments/manuscript_figure_source_data/**/*.csv -text whitespace=cr-at-eol

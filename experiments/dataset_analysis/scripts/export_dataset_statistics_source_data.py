@@ -262,7 +262,9 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
                      "ionic_liquid_6_properties_values_errors_ilthermo_strict_v2_interpolated.xlsx"))
     parser.add_argument(
         "--output-dir", type=Path,
-        default=Path("LaTex-MIPGraph/Fig"))
+        default=Path(
+            "experiments/manuscript_figure_source_data/dataset_statistics"
+        ))
     parser.add_argument(
         "--prefix", default="dataset_statistics_source_data",
         help="Output filename prefix. Files are written as <prefix>_<panel>.csv.")

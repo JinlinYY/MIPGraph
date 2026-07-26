@@ -179,15 +179,12 @@ python experiments/molecular_origin_analysis/run_all.py --stage figures
 
 For smoke tests or alternative output locations, use each script's `--help`.
 
-## Application Case
+## Notes On Large Files
 
-The design-agent example is implemented in:
+This repository uses Git LFS for model checkpoints, binary graph caches, workbooks, PNG/TIFF figures, and other large artifacts. If a large file appears as a small pointer file after cloning, run:
 
-```text
-il_property_prediction/scripts/run_design_agent.py
-il_property_prediction/src/agent/
-experiments/application_case/scripts/plot_application_case_agent_merged.py
+```bash
+git lfs pull
 ```
 
-It converts predicted thermophysical properties for candidate IL-condition records into response atlases, conductivity-viscosity trade-offs, constraint maps, Pareto screening, and ranked operating recommendations.
-
+Training outputs under `outputs/`, local caches, scratch directories, and external pretrained checkpoints are not intended for source control unless explicitly released. Validation-selected MIPGraph checkpoints can be published separately through Git LFS or GitHub Release assets.

@@ -15,6 +15,12 @@ from matplotlib.lines import Line2D
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIG_DIR = REPO_ROOT / "LaTex-MIPGraph" / "Fig"
 DEFAULT_PREFIX = FIG_DIR / "feature_importance_heatmap"
+DEFAULT_SOURCE_DATA_DIR = (
+    REPO_ROOT
+    / "experiments"
+    / "manuscript_figure_source_data"
+    / "interpretability_feature_importance_4x3"
+)
 
 PROPERTY_NAMES = [
     "Density",
@@ -288,10 +294,13 @@ def plot_summary(
     dpi: int,
     panel_labels: tuple[str, str, str],
     source_prefix: Path | None = None,
+    source_output_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     title_size: float = 11.6,
     color_mode: str = "property",
 ) -> None:
-    source_prefix = source_prefix or out_prefix
+    source_prefix = source_prefix or (
+        DEFAULT_SOURCE_DATA_DIR / out_prefix.name
+    )
     node = pd.read_csv(source_prefix.with_name(source_prefix.name + "_source_data_nodes.csv"))
     edge = pd.read_csv(source_prefix.with_name(source_prefix.name + "_source_data_edges.csv"))
     fg = pd.read_csv(source_prefix.with_name(source_prefix.name + "_source_data_functional_groups.csv"))
@@ -378,7 +387,11 @@ def plot_summary(
         ],
         ignore_index=True,
     )
-    source.to_csv(out_prefix.with_name(out_prefix.name + "_ranked_summary.csv"), index=False)
+    source_output_dir.mkdir(parents=True, exist_ok=True)
+    source.to_csv(
+        source_output_dir / f"{out_prefix.name}_ranked_summary.csv",
+        index=False,
+    )
     plot_data = pd.concat(
         [
             panel_plot_data(node_rank, panel_labels[0].upper(), "atom-node"),
@@ -396,7 +409,10 @@ def plot_summary(
             ],
             ignore_index=True,
         )
-    plot_data.to_csv(out_prefix.with_name(out_prefix.name + "_plot_data.csv"), index=False)
+    plot_data.to_csv(
+        source_output_dir / f"{out_prefix.name}_plot_data.csv",
+        index=False,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -406,6 +422,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dpi", type=int, default=600)
     parser.add_argument("--panel-labels", default="a,b,c")
     parser.add_argument("--source-prefix", type=Path, default=None)
+    parser.add_argument(
+        "--source-output-dir",
+        type=Path,
+        default=DEFAULT_SOURCE_DATA_DIR,
+    )
     parser.add_argument("--title-size", type=float, default=11.6)
     parser.add_argument("--color-mode", choices=["property", "panel"], default="property")
     return parser.parse_args()
@@ -422,6 +443,7 @@ def main() -> None:
         args.dpi,
         panel_labels,
         args.source_prefix,
+        args.source_output_dir,
         args.title_size,
         args.color_mode,
     )

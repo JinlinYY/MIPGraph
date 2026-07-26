@@ -248,8 +248,11 @@ sensitivity checkpoints on the frozen primary candidate identities and writes
 checkpoint, split, identity, and temperature-coverage manifests. The third
 command applies the frozen primary property thresholds, performs the 81-setting
 threshold sensitivity analysis, generates the application-only Figures 5 and 6
-plus the SI figures, and stages their source data for the bilingual chapter; it
-does not update Figure 3 or other preceding manuscript results. Run
+plus the SI figures, and publishes the 18 panel-level CSVs only to
+`experiments/manuscript_figure_source_data/computational_application_case/`;
+it also refreshes the aggregate field dictionary and manifest and does not
+create a second source-data bundle under the LaTeX figure directory. It does
+not update Figure 3 or other preceding manuscript results. Run
 `scripts/package_chapter_artifacts.py` to refresh the application-only
 `chapter_results/` release bundle. Compile the main manuscript with
 XeLaTeX:
