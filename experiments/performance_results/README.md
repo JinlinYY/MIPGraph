@@ -28,8 +28,9 @@ python -m experiments.performance_results.plot_performance_results
 ```
 
 The default source tables are the tracked CSVs under
-`result_fig/source_data/performance_results/`. Outputs are written to
-`result_fig/performance_results.{png,pdf,svg,tiff}` at 600 dpi.
+`experiments/manuscript_figure_source_data/performance_results/`. Outputs are
+written to
+`experiments/result_analysis/figures/performance_results/` at 600 dpi.
 
 Alternative audited source-data directory:
 

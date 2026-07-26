@@ -1,0 +1,31 @@
+feature_type,property,property_short,feature,importance,n_labels,normalized_importance
+cross-ion edge category,Density,Density,H-bond compatible pairs,0.0070550104463044,321,0.006762972497495683
+cross-ion edge category,Density,Density,aromatic-contact pairs,0.010966965505081545,321,0.010512994510263576
+cross-ion edge category,Density,Density,charge-complementary pairs,0.0426448714742408,321,0.04087961245905786
+cross-ion edge category,Density,Density,charge-magnitude pairs,0.04465033854372405,321,0.042802064415546896
+cross-ion edge category,Density,Density,other attended pairs,0.9378647061523248,321,0.8990423561176359
+cross-ion edge category,ElectricalConductivity,EC,H-bond compatible pairs,0.004457997119226166,185,0.004246481784016743
+cross-ion edge category,ElectricalConductivity,EC,aromatic-contact pairs,0.014312806040854067,185,0.013633716780239155
+cross-ion edge category,ElectricalConductivity,EC,charge-complementary pairs,0.04980953838172797,185,0.047446261572507725
+cross-ion edge category,ElectricalConductivity,EC,charge-magnitude pairs,0.05272355920358284,185,0.050222022975511996
+cross-ion edge category,ElectricalConductivity,EC,other attended pairs,0.9285056465380901,185,0.8844515168877243
+cross-ion edge category,HeatCapacity,HC,H-bond compatible pairs,0.0022911194351014075,192,0.002173515471517287
+cross-ion edge category,HeatCapacity,HC,aromatic-contact pairs,0.010982446372509003,192,0.010418713551133876
+cross-ion edge category,HeatCapacity,HC,charge-complementary pairs,0.054107723170697376,192,0.05133035477693456
+cross-ion edge category,HeatCapacity,HC,charge-magnitude pairs,0.054307366444845684,192,0.05151975029185084
+cross-ion edge category,HeatCapacity,HC,other attended pairs,0.9324190632129709,192,0.8845576659085634
+cross-ion edge category,SurfaceTension,ST,H-bond compatible pairs,0.000932267673377396,128,0.0008829259345982535
+cross-ion edge category,SurfaceTension,ST,aromatic-contact pairs,0.002245234092697501,128,0.0021264015328399223
+cross-ion edge category,SurfaceTension,ST,charge-complementary pairs,0.055884349858388305,128,0.052926582393851805
+cross-ion edge category,SurfaceTension,ST,charge-magnitude pairs,0.055884349858388305,128,0.052926582393851805
+cross-ion edge category,SurfaceTension,ST,other attended pairs,0.9409381449222565,128,0.8911375077448582
+cross-ion edge category,ThermalConductivity,TC,H-bond compatible pairs,0.0004205754920234525,123,0.0004033329814414687
+cross-ion edge category,ThermalConductivity,TC,aromatic-contact pairs,0.0,123,0.0
+cross-ion edge category,ThermalConductivity,TC,charge-complementary pairs,0.04275006530200684,123,0.0409974228696008
+cross-ion edge category,ThermalConductivity,TC,charge-magnitude pairs,0.04275006530200684,123,0.0409974228696008
+cross-ion edge category,ThermalConductivity,TC,other attended pairs,0.9568293574379712,123,0.9176018212793569
+cross-ion edge category,Viscosity,Visc.,H-bond compatible pairs,0.003847601945149075,273,0.003679810213767721
+cross-ion edge category,Viscosity,Visc.,aromatic-contact pairs,0.011059974412341694,273,0.01057765522180797
+cross-ion edge category,Viscosity,Visc.,charge-complementary pairs,0.04507619147990649,273,0.04311044441970796
+cross-ion edge category,Viscosity,Visc.,charge-magnitude pairs,0.04671632856021434,273,0.04467905605525025
+cross-ion edge category,Viscosity,Visc.,other attended pairs,0.9388978343743545,273,0.8979530340894661

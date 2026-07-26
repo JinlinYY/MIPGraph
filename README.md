@@ -28,7 +28,6 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 |-- data/                         # Data curation scripts and processed IL tables
 |-- experiments/                  # Baseline, dataset, performance, and figure scripts
 |-- il_property_prediction/       # Model package, configs, training and evaluation code
-|-- result_fig/                   # Manuscript figures and panel-level source CSV files
 |-- scripts/                      # Release and maintenance helper scripts
 |-- README.md
 ```
@@ -156,10 +155,11 @@ python experiments/baseline_comparison/scripts/summarize_split_baseline_results.
 
 ## Reproducing Manuscript Figures
 
-The final figures and CSV source data are stored in:
+The submission figures and their panel-level CSV source data are stored in:
 
 ```text
-result_fig/
+experiments/result_analysis/
+experiments/manuscript_figure_source_data/
 ```
 
 The figure-generation scripts are retained under `experiments/`:
@@ -170,7 +170,8 @@ python -m experiments.performance_results.plot_performance_results
 python experiments/interpretability/scripts/plot_interpretability_results_current.py
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --panel-labels j,k,l --color-mode panel
 python experiments/interpretability/scripts/compose_interpretability_four_by_three.py
-python experiments/application_case/scripts/plot_application_case_agent_merged.py
+python experiments/computational_application_case/scripts/build_refactored_application_case.py
+python experiments/molecular_origin_analysis/run_all.py --stage figures
 ```
 
 For smoke tests or alternative output locations, use each script's `--help`.

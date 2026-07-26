@@ -27,7 +27,12 @@ from experiments.performance_results.prepare_inputs import (
 )
 
 
-SOURCE_DATA = REPO_ROOT / "result_fig" / "source_data" / "performance_results"
+SOURCE_DATA = (
+    REPO_ROOT
+    / "experiments"
+    / "manuscript_figure_source_data"
+    / "performance_results"
+)
 
 
 def test_saved_source_data_reconstructs_all_protocol_property_metrics() -> None:

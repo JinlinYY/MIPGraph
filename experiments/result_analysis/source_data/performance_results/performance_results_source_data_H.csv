@@ -1,0 +1,25 @@
+split_strategy,property,log_R2,panel,panel_title
+Random point,Density,0.991789937019348,H,Property-wise log-space $R^2$
+Random IL,Density,0.952412247657776,H,Property-wise log-space $R^2$
+Balanced IL,Density,0.8146575689315796,H,Property-wise log-space $R^2$
+Ion-family,Density,0.9189260601997375,H,Property-wise log-space $R^2$
+Random point,Viscosity,0.9858778715133668,H,Property-wise log-space $R^2$
+Random IL,Viscosity,0.7828868627548218,H,Property-wise log-space $R^2$
+Balanced IL,Viscosity,0.7654629945755005,H,Property-wise log-space $R^2$
+Ion-family,Viscosity,0.7439881563186646,H,Property-wise log-space $R^2$
+Random point,ElectricalConductivity,0.9512128233909608,H,Property-wise log-space $R^2$
+Random IL,ElectricalConductivity,0.8247900009155273,H,Property-wise log-space $R^2$
+Balanced IL,ElectricalConductivity,0.8773614764213562,H,Property-wise log-space $R^2$
+Ion-family,ElectricalConductivity,0.7736761569976807,H,Property-wise log-space $R^2$
+Random point,HeatCapacity,0.9924010038375854,H,Property-wise log-space $R^2$
+Random IL,HeatCapacity,0.8290002942085266,H,Property-wise log-space $R^2$
+Balanced IL,HeatCapacity,0.9450385570526124,H,Property-wise log-space $R^2$
+Ion-family,HeatCapacity,0.586878776550293,H,Property-wise log-space $R^2$
+Random point,SurfaceTension,0.9709664583206176,H,Property-wise log-space $R^2$
+Random IL,SurfaceTension,0.6008515357971191,H,Property-wise log-space $R^2$
+Balanced IL,SurfaceTension,0.775783121585846,H,Property-wise log-space $R^2$
+Ion-family,SurfaceTension,0.2802978754043579,H,Property-wise log-space $R^2$
+Random point,ThermalConductivity,0.95164692401886,H,Property-wise log-space $R^2$
+Random IL,ThermalConductivity,0.9179421663284302,H,Property-wise log-space $R^2$
+Balanced IL,ThermalConductivity,0.8876484632492065,H,Property-wise log-space $R^2$
+Ion-family,ThermalConductivity,0.5725059509277344,H,Property-wise log-space $R^2$

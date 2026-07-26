@@ -49,7 +49,10 @@ PAPER_DIR = PROJECT_ROOT / "LaTex-MIPGraph"
 PAPER_FIG_DIR = PAPER_DIR / "Fig"
 PAPER_SOURCE_DIR = PAPER_FIG_DIR / "source_data"
 PERFORMANCE_SOURCE_DIR = (
-    PROJECT_ROOT / "result_fig" / "source_data" / "performance_results"
+    PROJECT_ROOT
+    / "experiments"
+    / "manuscript_figure_source_data"
+    / "performance_results"
 )
 
 PROPERTIES = [
