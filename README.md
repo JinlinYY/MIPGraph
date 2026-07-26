@@ -18,7 +18,6 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 
 ![MIPGraph framework](https://github.com/JinlinYY/MIPGraph/blob/main/Intro-method.png)
 
-
 ## Repository Layout
 
 ```text
@@ -189,7 +188,7 @@ python experiments/manuscript_figure_source_data/rebuild_manifest.py
 
 This command rejects figure files in the source-data tree, byte-identical
 duplicate CSVs, missing field definitions, invalid producer paths, and
-non-canonical source-data links.
+legacy duplicate source-data directories.
 
 The principal figure and source-data producers are:
 
@@ -223,7 +222,8 @@ The packager does not retrain a model or change reported statistics. It
 collects the approved figure formats, verifies canonical CSV references, and
 refreshes the figure manifest and panel mapping.
 
-For smoke tests or alternative output locations, use each script's `--help`.
+For entry points that expose CLI options, use `--help`; otherwise consult the
+README in the corresponding experiment directory.
 
 ## Notes On Large Files
 
