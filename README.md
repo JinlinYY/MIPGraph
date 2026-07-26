@@ -16,6 +16,7 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 - Surface tension
 - Thermal conductivity
 
+![MIPGraph framework](https://github.com/JinlinYY/MIPGraph/blob/main/Intro-method.png)
 
 
 ![MIPGraph framework](https://github.com/JinlinYY/MIPGraph/blob/main/Intro-method.png)
@@ -26,7 +27,10 @@ The model predicts six properties from ionic-liquid structure and thermodynamic 
 ```text
 .
 |-- data/                         # Data curation scripts and processed IL tables
-|-- experiments/                  # Baseline, dataset, performance, and figure scripts
+|-- experiments/                  # Experiment, analysis, and figure-generation code
+|   |-- manuscript_figure_source_data/
+|   |                               # Sole authoritative panel-level CSV source-data tree
+|   `-- result_analysis/           # Submission figures and figure-to-source-data mapping
 |-- il_property_prediction/       # Model package, configs, training and evaluation code
 |-- scripts/                      # Release and maintenance helper scripts
 |-- README.md
@@ -155,27 +159,72 @@ python experiments/baseline_comparison/scripts/summarize_split_baseline_results.
 
 ## Reproducing Manuscript Figures
 
-Submission figures and authoritative panel-level CSV source data are separated:
+Submission figures and their source data have deliberately separate ownership:
 
 ```text
-experiments/result_analysis/                  # Figures and figure manifest only
-experiments/manuscript_figure_source_data/    # Sole authoritative CSV source-data tree
+experiments/
+|-- manuscript_figure_source_data/           # Sole authoritative CSV source-data tree
+|   |-- manifest.csv                         # File inventory, dimensions, producer, SHA-256
+|   |-- column_dictionary.csv                # Field definitions, units, types, provenance
+|   |-- Intro-method/
+|   |-- computational_application_case/
+|   |-- dataset_statistics/
+|   |-- interpretability_feature_importance_4x3/
+|   |-- molecular_origin_analysis/
+|   `-- performance_results/
+`-- result_analysis/                         # Figures and figure metadata only
+    |-- figures/<figure_id>/                 # PNG, SVG, PDF, and TIFF deliverables
+    |-- manifest.csv                         # Figure-format inventory
+    `-- figure_source_map.csv                # Panel-to-canonical-CSV mapping
 ```
 
+`experiments/manuscript_figure_source_data/` is the only authoritative
+location for manuscript panel CSVs. Do not copy source tables into
+`experiments/result_analysis/`, `result_fig/`, or a LaTeX figure directory.
 `experiments/result_analysis/figure_source_map.csv` links every manuscript
-panel to the corresponding canonical CSV without copying the table.
+panel to its canonical CSV and records the table shape and SHA-256 digest.
 
-The figure-generation scripts are retained under `experiments/`:
+The root source-data catalog can be rebuilt and validated with:
+
+```bash
+python experiments/manuscript_figure_source_data/rebuild_manifest.py
+```
+
+This command rejects figure files in the source-data tree, byte-identical
+duplicate CSVs, missing field definitions, invalid producer paths, and
+non-canonical source-data links.
+
+The principal figure and source-data producers are:
 
 ```bash
 python experiments/dataset_analysis/scripts/plot_dataset_statistics_nature.py
+python experiments/dataset_analysis/scripts/export_dataset_statistics_source_data.py
 python -m experiments.performance_results.plot_performance_results
 python experiments/interpretability/scripts/plot_interpretability_results_current.py
+python il_property_prediction/scripts/compute_feature_importance_heatmap.py
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --panel-labels j,k,l --color-mode panel
 python experiments/interpretability/scripts/compose_interpretability_four_by_three.py
 python experiments/computational_application_case/scripts/build_refactored_application_case.py
-python experiments/molecular_origin_analysis/run_all.py --stage figures
+python experiments/molecular_origin_analysis/run_all.py --stage all
+python experiments/molecular_origin_analysis/package_source_data.py
+python experiments/manuscript_figure_source_data/rebuild_manifest.py
 ```
+
+The computational application producer publishes only the 18 panel tables
+actually used by Figures 5 and 6 and their application-case Supplementary
+Information. The molecular-origin pipeline keeps its panel CSVs under the
+same canonical root.
+
+To package a final manuscript figure directory without duplicating CSVs:
+
+```bash
+python experiments/result_analysis/scripts/package_manuscript_results.py \
+  --manuscript-figure-dir "<path-to-final-manuscript-Fig>"
+```
+
+The packager does not retrain a model or change reported statistics. It
+collects the approved figure formats, verifies canonical CSV references, and
+refreshes the figure manifest and panel mapping.
 
 For smoke tests or alternative output locations, use each script's `--help`.
 
