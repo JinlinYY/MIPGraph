@@ -166,7 +166,7 @@ The figure-generation scripts are retained under `experiments/`:
 
 ```bash
 python experiments/dataset_analysis/scripts/plot_dataset_statistics_nature.py
-python experiments/result_analysis/scripts/plot_performance_results_with_splits.py
+python -m experiments.performance_results.plot_performance_results
 python experiments/interpretability/scripts/plot_interpretability_results_current.py
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --panel-labels j,k,l --color-mode panel
 python experiments/interpretability/scripts/compose_interpretability_four_by_three.py

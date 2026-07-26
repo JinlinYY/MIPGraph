@@ -15,7 +15,7 @@ needed only for their specific baselines.
 - `baseline_comparison/`: tabular, SMILES, and graph baseline runners plus
   summary-table scripts.
 - `dataset_analysis/`: dataset statistics and source-data export scripts.
-- `result_analysis/`: MIPGraph performance and split-strategy figure scripts.
+- `performance_results/`: audited nine-panel MIPGraph performance figure.
 - `interpretability/`: interpretability and feature-importance figure scripts.
 - `application_case/`: merged application-case and design-agent figure script.
 
@@ -27,7 +27,7 @@ message:
 ```bash
 python experiments/baseline_comparison/scripts/run_baseline_comparison.py --help
 python experiments/dataset_analysis/scripts/plot_dataset_statistics_nature.py --help
-python experiments/result_analysis/scripts/plot_performance_results_with_splits.py --help
+python -m experiments.performance_results.plot_performance_results --help
 python experiments/interpretability/scripts/plot_feature_importance_summary.py --help
 python experiments/application_case/scripts/plot_application_case_agent_merged.py --help
 ```
@@ -51,14 +51,13 @@ python experiments/dataset_analysis/scripts/export_dataset_statistics_source_dat
 Performance figure:
 
 ```bash
-python experiments/result_analysis/scripts/prepare_current_best_figure_inputs.py
-python experiments/result_analysis/scripts/plot_performance_results_with_splits.py
+python -m experiments.performance_results.plot_performance_results
 ```
 
 If staged figure inputs are not under the default training-output path:
 
 ```bash
-python experiments/result_analysis/scripts/plot_performance_results_with_splits.py --input-root path/to/figure_inputs
+python -m experiments.performance_results.plot_performance_results --input-root path/to/figure_inputs
 ```
 
 Interpretability and feature-importance plate:
