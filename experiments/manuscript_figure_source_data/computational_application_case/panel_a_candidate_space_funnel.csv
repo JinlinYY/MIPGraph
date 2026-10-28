@@ -1,7 +1,0 @@
-﻿stage_order,stage,count,provenance
-1,combinatorial_pairs,900,30 cations x 30 anions
-2,InChI_identity_new_pool,608,standard_inchikey_identity_audit_608.csv
-3,evaluated_by_primary_model,608,candidate_screening_trajectory_608.csv
-4,hard_feasible,26,candidate_screening_trajectory_608.csv
-5,Pareto_rank_1,12,pareto_rank1_all_candidates.csv
-6,formal_shortlist,8,final_prioritized_candidates.csv

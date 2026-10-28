@@ -15,10 +15,10 @@ from typing import Iterable
 from PIL import Image
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).absolute().parents[3]
 MODULE_ROOT = PROJECT_ROOT / "experiments" / "result_analysis"
 SOURCE_DATA_ROOT = (
-    PROJECT_ROOT / "experiments" / "manuscript_figure_source_data"
+    PROJECT_ROOT / "experiments" / "result_analysis" / "figures" / "manuscript_figure_source_data"
 )
 DEFAULT_MANUSCRIPT_FIGURE_DIR = (
     Path.home() / "Downloads" / "OD-TwoColumn (June 2026)" / "Fig"
@@ -120,7 +120,7 @@ FIGURES = (
             "figureS_heat_capacity_size_control/"
             "figureS_heat_capacity_size_control.svg"
         ),
-        "native Matplotlib export from the matching molecular-origin workflow",
+        "native Matplotlib export from the matching molecular interpretation workflow",
     ),
     FigureSpec(
         "Intro-method",
@@ -157,8 +157,8 @@ FIGURES = (
         "native Matplotlib export from the matching application workflow",
     ),
     FigureSpec(
-        "molecular_origin_analysis",
-        "molecular_origin_analysis.png",
+        "molecular_interpretation",
+        "molecular_interpretation.png",
         None,
         None,
         "the compact submitted layout is available only as the exact manuscript PNG",
@@ -399,47 +399,47 @@ def source_specs() -> dict[str, list[SourceSpec]]:
         "figureS_heat_capacity_size_control": [
             SourceSpec(
                 project_path(
-                    "experiments/manuscript_figure_source_data/"
-                    "molecular_origin_analysis/source_data/"
+                    "experiments/result_analysis/figures/manuscript_figure_source_data/"
+                    "molecular_interpretation/source_data/"
                     "figure_si_heat_capacity_size_control_source_data.csv"
                 ),
                 "a-c",
                 "Identity-level heat-capacity size-control records.",
             )
         ],
-        "molecular_origin_analysis": [
+        "molecular_interpretation": [
             SourceSpec(
                 project_path(
-                    "experiments/manuscript_figure_source_data/"
-                    "molecular_origin_analysis/source_data/"
-                    "figure_main_molecular_origin_analysis_final_panel_a_source_data.csv"
+                    "experiments/result_analysis/figures/manuscript_figure_source_data/"
+                    "molecular_interpretation/source_data/"
+                    "figure_main_molecular_interpretation_final_panel_a_source_data.csv"
                 ),
                 "a",
                 "Association and attention evidence-map records.",
             ),
             SourceSpec(
                 project_path(
-                    "experiments/manuscript_figure_source_data/"
-                    "molecular_origin_analysis/source_data/"
-                    "figure_main_molecular_origin_analysis_final_panel_b_source_data.csv"
+                    "experiments/result_analysis/figures/manuscript_figure_source_data/"
+                    "molecular_interpretation/source_data/"
+                    "figure_main_molecular_interpretation_final_panel_b_source_data.csv"
                 ),
                 "b",
                 "Leading association within each structural scope.",
             ),
             SourceSpec(
                 project_path(
-                    "experiments/manuscript_figure_source_data/"
-                    "molecular_origin_analysis/source_data/"
-                    "figure_main_molecular_origin_analysis_final_panel_c_source_data.csv"
+                    "experiments/result_analysis/figures/manuscript_figure_source_data/"
+                    "molecular_interpretation/source_data/"
+                    "figure_main_molecular_interpretation_final_panel_c_source_data.csv"
                 ),
                 "c",
                 "Condition-adjusted response curves and bootstrap intervals.",
             ),
             SourceSpec(
                 project_path(
-                    "experiments/manuscript_figure_source_data/"
-                    "molecular_origin_analysis/source_data/"
-                    "figure_main_molecular_origin_analysis_final_panel_d_source_data.csv"
+                    "experiments/result_analysis/figures/manuscript_figure_source_data/"
+                    "molecular_interpretation/source_data/"
+                    "figure_main_molecular_interpretation_final_panel_d_source_data.csv"
                 ),
                 "d",
                 "Condition-matched ion-substitution effects.",
@@ -450,7 +450,7 @@ def source_specs() -> dict[str, list[SourceSpec]]:
     dataset_dir = (
         PROJECT_ROOT
         / "experiments"
-        / "manuscript_figure_source_data"
+        / "result_analysis" / "figures" / "manuscript_figure_source_data"
         / "dataset_statistics"
     )
     sources["dataset_statistics"] = [
@@ -465,7 +465,7 @@ def source_specs() -> dict[str, list[SourceSpec]]:
     performance_dir = (
         PROJECT_ROOT
         / "experiments"
-        / "manuscript_figure_source_data"
+        / "result_analysis" / "figures" / "manuscript_figure_source_data"
         / "performance_results"
     )
     sources["performance_results"] = [
@@ -484,7 +484,7 @@ def source_specs() -> dict[str, list[SourceSpec]]:
     interpretability_dir = (
         PROJECT_ROOT
         / "experiments"
-        / "manuscript_figure_source_data"
+        / "result_analysis" / "figures" / "manuscript_figure_source_data"
         / "interpretability_feature_importance_4x3"
     )
     interpretability_sources: list[SourceSpec] = []
@@ -726,7 +726,7 @@ def package(
             )
 
     auxiliary_root = (
-        figure_root / "molecular_origin_analysis" / "native_exports"
+        figure_root / "molecular_interpretation" / "native_exports"
     )
     if auxiliary_root.is_dir():
         for output in sorted(path for path in auxiliary_root.iterdir() if path.is_file()):
@@ -739,13 +739,13 @@ def package(
             manifest_rows.append(
                 {
                     "artifact_type": "figure_auxiliary",
-                    "figure_id": "molecular_origin_analysis",
+                    "figure_id": "molecular_interpretation",
                     "panel_mapping": "all",
                     "format": file_format,
                     "relative_path": output.relative_to(destination).as_posix(),
                     "origin": relative_origin(output),
                     "provenance": (
-                        "native molecular-origin workflow export retained for "
+                        "native molecular interpretation workflow export retained for "
                         "reproducibility; not the compact submitted view"
                     ),
                     "bytes": output.stat().st_size,

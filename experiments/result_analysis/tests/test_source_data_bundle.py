@@ -6,11 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from experiments.manuscript_figure_source_data import rebuild_manifest
+from experiments.result_analysis.figures.manuscript_figure_source_data import (
+    rebuild_manifest,
+)
 from experiments.result_analysis.scripts import package_manuscript_results
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).absolute().parents[3]
 RESULT_ROOT = PROJECT_ROOT / "experiments" / "result_analysis"
 
 
@@ -29,7 +31,9 @@ def _sha256(path: Path) -> str:
 
 def test_figure_links_use_single_canonical_csvs() -> None:
     figure_ids = {
-        path.name for path in (RESULT_ROOT / "figures").iterdir() if path.is_dir()
+        path.name
+        for path in (RESULT_ROOT / "figures").iterdir()
+        if path.is_dir() and path.name != "manuscript_figure_source_data"
     }
     assert not (RESULT_ROOT / "source_data").exists()
     assert not (RESULT_ROOT / "source_data_manifest.csv").exists()
@@ -46,7 +50,7 @@ def test_figure_links_use_single_canonical_csvs() -> None:
             (
                 PROJECT_ROOT
                 / "experiments"
-                / "manuscript_figure_source_data"
+                / "result_analysis" / "figures" / "manuscript_figure_source_data"
             ).resolve()
         )
         assert packaged.is_file()

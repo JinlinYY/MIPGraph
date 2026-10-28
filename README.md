@@ -48,7 +48,7 @@ Use PyTorch and PyTorch Geometric builds compatible with your Python and CUDA en
 | `il_property_prediction/scripts/` | Preprocessing, training, and prediction entry points |
 | `data/` | Data-processing workflow and property tables |
 | `experiments/baseline_comparison/` | Descriptor, molecular-language, and graph baselines |
-| `experiments/molecular_origin_analysis/` | Structure–property and attribution analyses |
+| `experiments/molecular_interpretation/` | Structure–property and attribution analyses |
 | `experiments/computational_application_case/` | Candidate screening and reference-cell interpretation |
-| `experiments/manuscript_figure_source_data/` | Panel-level numerical source data |
+| `experiments/result_analysis/figures/manuscript_figure_source_data/` | Panel-level numerical source data |
 | `experiments/result_analysis/` | Manuscript figures and links to source tables |

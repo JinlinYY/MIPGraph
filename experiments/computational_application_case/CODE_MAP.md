@@ -32,5 +32,5 @@ partition-specific checkpoints are evaluated independently for sensitivity.
 
 Run commands from the repository root using `python`. See `README.md` for the
 released-figure commands. Numerical sources are stored in
-`experiments/manuscript_figure_source_data/computational_application_case/`;
+`experiments/result_analysis/figures/manuscript_figure_source_data/computational_application_case/`;
 final figures and their source links are in `experiments/result_analysis/`.

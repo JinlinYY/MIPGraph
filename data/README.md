@@ -31,7 +31,7 @@ source information; validation and test evaluation use original observations.
 - `processed/`: curated property workbooks and identity/condition tables.
 - `scripts/`: data merging, SMILES processing, and label preparation.
 - `design_fragments/`: small example ion libraries for optional design examples.
-- `../experiments/manuscript_figure_source_data/`: numerical data underlying
+- `../experiments/result_analysis/figures/manuscript_figure_source_data/`: numerical data underlying
   the manuscript figures, including property coverage and prediction results.
 
 Preprocessing entry points are under `il_property_prediction/scripts/`.

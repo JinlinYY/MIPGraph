@@ -12,5 +12,5 @@ method.png -filter -diff -merge -text
 *.xlsx filter=lfs diff=lfs merge=lfs -text
 *.xls filter=lfs diff=lfs merge=lfs -text
 # Canonical manuscript CSVs are byte-audited. Preserve their recorded bytes.
-experiments/manuscript_figure_source_data/*.csv -text whitespace=cr-at-eol
-experiments/manuscript_figure_source_data/**/*.csv -text whitespace=cr-at-eol
+experiments/result_analysis/figures/manuscript_figure_source_data/*.csv -text whitespace=cr-at-eol
+experiments/result_analysis/figures/manuscript_figure_source_data/**/*.csv -text whitespace=cr-at-eol

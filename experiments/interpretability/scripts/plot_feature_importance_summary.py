@@ -18,7 +18,7 @@ DEFAULT_PREFIX = FIG_DIR / "feature_importance_heatmap"
 DEFAULT_SOURCE_DATA_DIR = (
     REPO_ROOT
     / "experiments"
-    / "manuscript_figure_source_data"
+    / "result_analysis" / "figures" / "manuscript_figure_source_data"
     / "interpretability_feature_importance_4x3"
 )
 

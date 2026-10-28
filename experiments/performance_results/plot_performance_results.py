@@ -152,7 +152,7 @@ def nice_log_limits(values: np.ndarray) -> tuple[float, float]:
     return low, high
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).absolute().parents[2]
 FIG_DIR = (
     REPO_ROOT
     / "experiments"
@@ -172,7 +172,7 @@ CURRENT_BEST_INPUT_ROOT = (
 SAVED_SOURCE_DATA_DIR = (
     REPO_ROOT
     / "experiments"
-    / "manuscript_figure_source_data"
+    / "result_analysis" / "figures" / "manuscript_figure_source_data"
     / "performance_results"
 )
 

@@ -53,7 +53,7 @@ python experiments/computational_application_case/scripts/render_derived_metrics
 ```
 
 The source tables are stored once in
-`experiments/manuscript_figure_source_data/computational_application_case/`.
+`experiments/result_analysis/figures/manuscript_figure_source_data/computational_application_case/`.
 Final PNG/PDF/SVG/TIFF figures are under `experiments/result_analysis/figures/`.
 The screening tables retain identities, constraints, applicability-domain
 information, protocol-specific decisions, and bootstrap selection frequencies.

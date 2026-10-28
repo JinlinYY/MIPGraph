@@ -63,7 +63,7 @@ TABLE_DIR = PRIMARY_ROOT / "tables"
 PAPER_DIR = PROJECT_ROOT / "LaTex-MIPGraph"
 PAPER_FIG_DIR = PAPER_DIR / "Fig"
 MANUSCRIPT_SOURCE_ROOT = (
-    PROJECT_ROOT / "experiments" / "manuscript_figure_source_data"
+    PROJECT_ROOT / "experiments" / "result_analysis" / "figures" / "manuscript_figure_source_data"
 )
 APPLICATION_SOURCE_DIR = (
     MANUSCRIPT_SOURCE_ROOT / "computational_application_case"

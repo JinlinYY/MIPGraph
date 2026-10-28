@@ -263,7 +263,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir", type=Path,
         default=Path(
-            "experiments/manuscript_figure_source_data/dataset_statistics"
+            "experiments/result_analysis/figures/manuscript_figure_source_data/dataset_statistics"
         ))
     parser.add_argument(
         "--prefix", default="dataset_statistics_source_data",

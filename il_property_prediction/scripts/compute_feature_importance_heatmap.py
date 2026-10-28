@@ -630,7 +630,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source-data-dir",
         default=(
-            "../experiments/manuscript_figure_source_data/"
+            "../experiments/result_analysis/figures/manuscript_figure_source_data/"
             "interpretability_feature_importance_4x3"
         ),
         help=(

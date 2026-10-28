@@ -50,7 +50,7 @@ PAPER_FIG_DIR = PAPER_DIR / "Fig"
 PERFORMANCE_SOURCE_DIR = (
     PROJECT_ROOT
     / "experiments"
-    / "manuscript_figure_source_data"
+    / "result_analysis" / "figures" / "manuscript_figure_source_data"
     / "performance_results"
 )
 

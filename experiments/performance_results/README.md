@@ -21,7 +21,7 @@ python -m experiments.performance_results.plot_performance_results
 ```
 
 Default inputs are the A–I CSVs in
-`experiments/manuscript_figure_source_data/performance_results/`. Output files are
+`experiments/result_analysis/figures/manuscript_figure_source_data/performance_results/`. Output files are
 written to `experiments/result_analysis/figures/performance_results/` as PNG,
 PDF, SVG, and TIFF. The raster output uses 600 dpi.
 

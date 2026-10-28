@@ -419,7 +419,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         "--source-data-dir",
         type=Path,
         default=Path(
-            "experiments/manuscript_figure_source_data/"
+            "experiments/result_analysis/figures/manuscript_figure_source_data/"
             "interpretability_feature_importance_4x3"
         ),
     )

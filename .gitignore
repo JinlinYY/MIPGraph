@@ -74,8 +74,12 @@ experiments/**/tmp/
 *.pptx
 
 # Manuscript source-data bundles are intentional versioned deliverables.
-!experiments/manuscript_figure_source_data/molecular_origin_analysis/
-!experiments/manuscript_figure_source_data/molecular_origin_analysis/**
+!experiments/result_analysis/figures/
+experiments/result_analysis/figures/*
+!experiments/result_analysis/figures/manuscript_figure_source_data/
+!experiments/result_analysis/figures/manuscript_figure_source_data/**
+!experiments/result_analysis/figures/manuscript_figure_source_data/molecular_interpretation/
+!experiments/result_analysis/figures/manuscript_figure_source_data/molecular_interpretation/**
 
 # OS metadata
 Thumbs.db

@@ -9,7 +9,7 @@ Prediction and Ionic-Liquid Screening*.
 | `dataset_analysis/` | Property distributions, label availability, and chemical coverage |
 | `performance_results/` | Four-protocol, three-seed predictive performance figure |
 | `interpretability/` | Feature, atom, and cross-ion attribution analyses |
-| `molecular_origin_analysis/` | Condition-adjusted structure–property associations and response shapes |
+| `molecular_interpretation/` | Condition-adjusted structure–property associations and response shapes |
 | `computational_application_case/` | Ion-pair screening and reference-cell calculations |
 | `manuscript_figure_source_data/` | Single canonical copy of numerical figure data |
 | `result_analysis/` | Final figure files and links to their source tables |
@@ -28,6 +28,6 @@ python -m experiments.performance_results.plot_performance_results
 To update the numerical source catalog and figure links:
 
 ```bash
-python experiments/manuscript_figure_source_data/rebuild_manifest.py
+python experiments/result_analysis/figures/manuscript_figure_source_data/rebuild_manifest.py
 python experiments/result_analysis/scripts/package_manuscript_results.py --source-data-only
 ```

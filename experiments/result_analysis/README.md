@@ -2,21 +2,21 @@
 
 This directory contains the final figures for the current manuscript and
 Supporting Information. Numerical source tables are stored once, in
-[`../manuscript_figure_source_data/`](../manuscript_figure_source_data/).
+[`figures/manuscript_figure_source_data/`](figures/manuscript_figure_source_data/).
 
 ## Figure files
 
 Each `figures/<figure_id>/` directory contains PNG, PDF, SVG, and TIFF exports.
 `manifest.csv` records the file formats, image dimensions, and checksums.
 `figure_source_map.csv` links each figure panel directly to its canonical CSV.
-There is no separate numerical-data mirror in this directory.
+The source tables sit beside the figure folders under `figures/manuscript_figure_source_data/`.
 
 | Figure identifier | Content |
 |---|---|
 | `Intro-method` | Framework illustration |
 | `dataset_statistics` | Experimental data coverage and distributions |
 | `performance_results` | Predictive performance under four fixed partitions |
-| `molecular_origin_analysis` | Structure–property associations and response shapes |
+| `molecular_interpretation` | Structure–property associations and response shapes |
 | `interpretability` | Molecular and feature attribution |
 | `auditable_virtual_screening_validation` | Screening funnel, constraints and candidate roles |
 | `reference_cell_scenario_audited` | Reference-cell interpretation of selected candidates |
