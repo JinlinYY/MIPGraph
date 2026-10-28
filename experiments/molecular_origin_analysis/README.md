@@ -1,331 +1,70 @@
-# MIPGraph molecular-origin analysis
+# Molecular interpretation of property-specific thermophysical behavior
 
-This directory is a non-invasive post-processing module for connecting frozen
-MIPGraph outputs with auditable molecular structure–property hypotheses. It
-loads the original data, split, model class, and checkpoint through adapters;
-it does not retrain MIPGraph or modify the original project.
+This module contains the structure–property association analysis presented in the manuscript
+and Supporting Information. It relates experimental observations and MIPGraph
+representations to chemical features of cations, anions and their combinations.
 
-The workflow keeps three evidence classes separate:
+## Analyses
 
-1. **Observed-data association**: condition-controlled and family-stratified
-   relations between measured properties and molecular descriptors.
-2. **Frozen-model sensitivity**: gradient×input and descriptor-surrogate
-   permutation analyses of MIPGraph responses.
-3. **Counterfactual prediction**: MIPGraph responses for RDKit-valid,
-   charge-balanced ion-pair structures, qualified by an applicability-domain
-   check.
+The consolidated main-text figure combines:
 
-Agreement among these classes can support a qualitative structural prior before
-full property inference, but it does not establish causality, interaction
-energy, liquid-state persistence, electrolyte suitability, or electrochemical
-performance.
+1. Structural associations and cross-ion attention contrasts for six properties.
+2. Leading associations after thermodynamic-condition adjustment and IL-identity
+   balancing, with family and descriptor-redundancy controls.
+3. Property-wise response shapes for selected non-redundant factors, shown as
+   IL-level quintile medians and bootstrap confidence intervals.
+4. Absolute property differences between condition-matched pairs differing in
+   cation or anion identity.
 
-## Relationship to the original project
+The SI analysis examines the heat-capacity association after molecular-size
+control. Statistical associations, model attention, and matched-pair differences
+are reported with their property-specific coverage and uncertainty.
 
-All new code and outputs are below
-`experiments/molecular_origin_analysis/`. `ProjectAdapter`, `DataAdapter`, and
-`ModelAdapter` import and call the original implementation read-only. The
-module does not patch the original model, data, configuration, checkpoints,
-screening results, manuscript, figures, or Supporting Information.
+## Data and model inputs
 
-The formal run found only one compatible checkpoint:
-`random_point_seed42`. The requested random-IL, property-balanced, and
-ion-family checkpoints were not present. The executed results therefore use
-the random-point checkpoint as an explicitly recorded fallback; multi-
-checkpoint stability is reported as not assessable.
+The analyses use the curated IL identities, experimental property observations,
+temperature and pressure records, molecular descriptors, and the configured
+MIPGraph checkpoint. Model-based stages load the checkpoint together with its
+matching architecture, target scales, and condition scales.
 
-## Directory layout
+Settings are in [`config/analysis_config.yaml`](config/analysis_config.yaml).
+Use `model.checkpoint` to specify a compatible checkpoint and `data.max_samples: 0`
+for the complete analysis dataset. The configuration also controls reference
+conditions, identity-level bootstrap repeats, descriptor filtering, and output
+formats.
 
-```text
-molecular_origin_analysis/
-|-- config/                  # analysis configuration
-|-- src/                     # adapters and analysis implementations
-|-- templates/               # real-SMILES counterfactual definitions
-|-- tests/                   # adapter, cache, chemistry, and smoke tests
-|-- requirements_extra.txt
-|-- run_all.py               # only analysis entrypoint
-`-- package_source_data.py   # package authoritative panel CSVs
+## Entry points
+
+Run from the repository root:
+
+```bash
+python experiments/molecular_origin_analysis/run_all.py   --config experiments/molecular_origin_analysis/config/analysis_config.yaml
 ```
 
-## Environment
+The `--stage` option selects association, attribution, attention, applicability,
+or figure-generation stages. For example:
 
-Use the environment that can already import the original MIPGraph project.
-The formal run used Python 3.9, PyTorch, RDKit, NumPy, Pandas,
-scikit-learn, SciPy, Matplotlib, PyYAML, and PyArrow. Install only the
-additional serialization/analysis dependencies if missing:
-
-```powershell
-python -m pip install -r experiments\molecular_origin_analysis\requirements_extra.txt
+```bash
+python experiments/molecular_origin_analysis/run_all.py --stage association
+python experiments/molecular_origin_analysis/run_all.py --stage figures
 ```
 
-No package installation is performed automatically.
+Install the additional analysis dependencies when needed:
 
-## Configuration
-
-The default configuration is
-[`config/analysis_config.yaml`](config/analysis_config.yaml). Important fields
-include:
-
-- `project.root` and `project.output_root`;
-- `model.checkpoint`, `model.primary_checkpoint_type`, `model.device`, and
-  `model.batch_size`;
-- `data.split`, `data.include_train_for_reference`, and `data.max_samples`;
-- reference temperatures, statistical thresholds, attribution settings,
-  applicability-domain quantiles, and output formats.
-
-Use `model.checkpoint: auto` for audited discovery, or set an absolute
-checkpoint path. To switch checkpoints without editing YAML:
-
-```powershell
-python experiments\molecular_origin_analysis\run_all.py `
-  --set model.checkpoint="D:/path/to/checkpoint.pt" --force
+```bash
+python -m pip install -r experiments/molecular_origin_analysis/requirements_extra.txt
 ```
 
-The matching model configuration and split must remain compatible with that
-checkpoint. Selection decisions and limitations are written to
-`results/reports/project_inspection.md`.
+## Figure data
 
-The data locations are auto-discovered from the original project. They can be
-changed through dotted overrides when the corresponding configuration key is
-available:
+The final numerical panel tables are stored once in
+`experiments/manuscript_figure_source_data/molecular_origin_analysis/source_data/`.
+Final figure exports are in `experiments/result_analysis/figures/` under
+`molecular_origin_analysis` and `figureS_heat_capacity_size_control`.
 
-```powershell
-python experiments\molecular_origin_analysis\run_all.py `
-  --set data.split=test --set data.max_samples=32
+The source-table fields, units, coverage, and interval definitions are given in
+the companion data dictionary. To export newly calculated panel tables:
+
+```bash
+python experiments/molecular_origin_analysis/package_source_data.py
 ```
-
-`--set SECTION.KEY=VALUE` may be repeated. The default project and output paths
-are repository-relative, so the configuration is portable across machines.
-
-## Running on Windows
-
-From the project root in PowerShell or CMD:
-
-```powershell
-python experiments\molecular_origin_analysis\run_all.py `
-  --config experiments\molecular_origin_analysis\config\analysis_config.yaml
-```
-
-Run a single stage:
-
-```powershell
-python experiments\molecular_origin_analysis\run_all.py --stage inspect
-python experiments\molecular_origin_analysis\run_all.py --stage extract
-python experiments\molecular_origin_analysis\run_all.py --stage association
-python experiments\molecular_origin_analysis\run_all.py --stage attribution
-python experiments\molecular_origin_analysis\run_all.py --stage attention
-python experiments\molecular_origin_analysis\run_all.py --stage counterfactual
-python experiments\molecular_origin_analysis\run_all.py --stage applicability
-python experiments\molecular_origin_analysis\run_all.py --stage rules
-python experiments\molecular_origin_analysis\run_all.py --stage figures
-python experiments\molecular_origin_analysis\run_all.py --stage manuscript
-python experiments\molecular_origin_analysis\run_all.py --stage validate
-```
-
-Use `--force` after changing a checkpoint or an upstream analysis setting.
-For a lightweight smoke run, add
-`--max-samples 32 --set statistics.bootstrap_repeats=20`.
-
-## Cache and reproducibility
-
-Extraction cache metadata records the configuration and checkpoint hashes.
-The formal manifest also records the Git commit, data split, software versions,
-random seed, and stage status:
-
-`results/reports/reproducibility_manifest.json`.
-
-The main cached outputs are:
-
-- `model_outputs.parquet`: aligned identities, conditions, labels, masks, and
-  inverse-transformed predictions;
-- `descriptor_matrix.parquet`: named global, functional-group, and pair
-  descriptors;
-- `latent_representations.npz`: batched cation, anion, pair, condition, and
-  expert representations;
-- `router_weights.parquet`;
-- `cross_ion_attention/cross_ion_attention_summary.parquet`.
-
-Do not manually combine caches generated from different checkpoints.
-
-## Results
-
-### Manuscript-facing consolidated figure
-
-The main-text result is the integrated four-panel figure:
-
-```text
-results/figures/figure_main_molecular_origin_analysis_final.png
-results/figures/figure_main_molecular_origin_analysis_final.pdf
-results/figures/figure_main_molecular_origin_analysis_final.svg
-results/figures/figure_main_molecular_origin_analysis_final.tiff
-```
-
-Panels a–d respectively report an integrated hero map that combines the three
-highest-confidence structural associations and three largest cross-ion
-attention contrasts per property, the condition-controlled ion-level
-association-dominance plot, a right-hand 3 × 2 response-shape atlas containing
-three deterministically ranked curve-supported factors per property, and a
-compact condition-matched ion-substitution effect-distribution
-forest stacked below panel b in the left evidence column. The original
-standalone Figures
-A–F remain available as auditable component views; they are not required as six
-separate main-text figures. This figure contains no candidate ranking or
-screening result.
-
-Each composite panel has an independent source-data CSV under
-`results/tables/figure_source_data/`. The figure contract and export audit are
-stored in `results/reports/composite_figure_contract.md` and
-`results/reports/composite_figure_qa.md`.
-
-The manuscript-ready analysis and captions are:
-
-```text
-results/manuscript/molecular_origin_results_section_en.tex
-results/manuscript/molecular_origin_results_section_zh.tex
-results/manuscript/composite_figure_caption_en.tex
-results/manuscript/composite_figure_caption_zh.tex
-```
-
-Key tables:
-
-- `feature_property_associations.csv`;
-- `partial_correlations.csv`;
-- `family_stratified_associations.csv`;
-- `robust_structure_property_factors.csv`;
-- `property_feature_importance.csv`;
-- `attribution_method_agreement.csv`;
-- `matched_molecular_pairs.csv`;
-- `virtual_counterfactual_library.csv`;
-- `counterfactual_predictions.csv`;
-- `observed_test_applicability_domain.csv`;
-- `design_rule_summary.csv`;
-- `unsupported_hypotheses.csv`.
-
-The consolidated figure and SI control figure are exported as raster PNG and
-vector PDF/SVG. Every quantitative panel has a CSV source table in
-`results/tables/figure_source_data/`. Reproduce only the figures, without
-rerunning inference, with:
-
-```powershell
-python experiments\molecular_origin_analysis\run_all.py --stage figures --force
-```
-
-Package the exact plotted CSVs into the repository-level authoritative
-source-data directory:
-
-```powershell
-python experiments\molecular_origin_analysis\package_source_data.py
-```
-
-The resulting bundle is
-`experiments/manuscript_figure_source_data/molecular_origin_analysis/` and
-contains a SHA-256 source-data manifest and column dictionary. Submission
-figures remain under `experiments/result_analysis/figures/`.
-
-The independent manuscript materials and captions are in
-`results/manuscript/`; no existing LaTeX or manuscript file is edited.
-
-## Applicability-domain interpretation
-
-The descriptor-space AD is fitted only on the configured training reference
-set. Standardized k-nearest-neighbour distance thresholds are determined from
-reference quantiles:
-
-- at or below q90: `in_domain`;
-- above q90 and at or below q95: `borderline`;
-- above q95: `out_of_domain`.
-
-These labels are a distance-based diagnostic, not proof that a structure is
-chemically synthesizable or that an ionic liquid remains liquid. Candidate and
-counterfactual tables retain the status and nearest-reference information.
-
-## Counterfactual templates
-
-Templates are defined in
-[`templates/counterfactual_templates.yaml`](templates/counterfactual_templates.yaml).
-To add a structure:
-
-1. use explicit cation and anion SMILES;
-2. give each ion a net formal charge of +1 and −1, respectively;
-3. specify a unique `template_id`, `modification_type`, and series labels;
-4. run `pytest` and the `counterfactual` stage.
-
-RDKit parsing, canonicalization, InChIKey deduplication, charge balance, and
-combined-pair neutrality are checked before inference. Rejected and
-checkpoint-incompatible structures are preserved in audit tables rather than
-silently discarded.
-
-## Memory and GPU usage
-
-- lower `model.batch_size` for GPU memory pressure;
-- set `--device cpu` when CUDA is unavailable;
-- use `--max-samples` for development only;
-- lower `attribution.maximum_samples` and
-  `attribution.permutation_repeats` to reduce attribution cost;
-- keep `model.num_workers: 0` on Windows if DataLoader multiprocessing causes
-  errors.
-
-The formal tables should be regenerated with `data.max_samples: 0`.
-
-## Tests
-
-From the project root:
-
-```powershell
-pytest experiments\molecular_origin_analysis\tests -v
-```
-
-Or from this module:
-
-```powershell
-cd experiments\molecular_origin_analysis
-pytest tests -v
-```
-
-The real-checkpoint smoke test may allocate substantial memory; the routine
-unit suite uses bounded seams and temporary directories.
-
-## Common errors
-
-- **No checkpoint found**: set `model.checkpoint` explicitly and confirm the
-  original model configuration is present.
-- **State-dict mismatch**: do not force partial loading; select the checkpoint's
-  matching architecture/configuration.
-- **Parquet import error**: install PyArrow from `requirements_extra.txt`.
-- **CUDA out of memory**: reduce batch/attribution sample sizes or use CPU.
-- **SMILES rejection**: inspect `counterfactual_rejections.csv`.
-- **Counterfactual inference failure**: the ion may not exist in the frozen
-  Uni-Mol cache; inspect `counterfactual_inference_failures.csv`.
-- **No attention result**: consult `cross_ion_interpretation.md`; missing or
-  semantically unaudited tensors are never fabricated.
-- **Empty plot input**: run the required upstream stage and inspect the log.
-
-## Scientific boundaries
-
-- Association tables describe conditional statistical relations in the
-  available observed data.
-- Attribution tables describe sensitivity of the frozen checkpoint or an
-  explicitly labelled descriptor surrogate.
-- Attention tables describe shared model focus patterns, not quantum-chemical
-  interaction energies.
-- Counterfactual tables describe conditional model responses for valid
-  structures within or near the descriptor reference domain.
-- The manuscript-facing figure and text contain no candidate screening,
-  Pareto ranking, shortlist, or qualification-role analysis.
-- No output validates capacitance, energy density, cycling, electrochemical
-  stability, safety, or wide-temperature operation.
-
-## Verifying scope integrity
-
-Record the repository state before and after execution:
-
-```powershell
-git status --short
-git diff -- experiments\molecular_origin_analysis
-git diff --check
-```
-
-Only this module should be new or changed by the workflow. Pre-existing dirty
-files elsewhere in the repository are listed in
-`results/reports/implementation_report.md` and must not be attributed to this
-module.

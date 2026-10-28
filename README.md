@@ -51,4 +51,4 @@ Use PyTorch and PyTorch Geometric builds compatible with your Python and CUDA en
 | `experiments/molecular_origin_analysis/` | Structure–property and attribution analyses |
 | `experiments/computational_application_case/` | Candidate screening and reference-cell interpretation |
 | `experiments/manuscript_figure_source_data/` | Panel-level numerical source data |
-| `experiments/result_analysis/` | Manuscript figures and per-figure data |
+| `experiments/result_analysis/` | Manuscript figures and links to source tables |

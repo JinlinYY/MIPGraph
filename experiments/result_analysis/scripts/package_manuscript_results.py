@@ -1,12 +1,4 @@
-"""Package exact manuscript figures and link them to canonical source data.
-
-The author-supplied PNG files are treated as the canonical manuscript views.
-Native PDF/SVG exports are copied when the matching plotting workflow provides
-them. Raster-derived PDF/SVG files are explicitly identified in the manifest
-when no matching native vector export exists. Panel-level CSV files are never
-copied into this result package; they remain under the single authoritative
-``experiments/manuscript_figure_source_data`` tree.
-"""
+"""Export manuscript figures and link each panel to its single canonical CSV."""
 
 from __future__ import annotations
 
@@ -260,10 +252,18 @@ def source_specs() -> dict[str, list[SourceSpec]]:
             SourceSpec(
                 canonical_source(
                     "computational_application_case",
+                    "panel_f_qualification_display.csv",
+                ),
+                "f",
+                "Current displayed candidates, audited structures, names, and qualification labels.",
+            ),
+            SourceSpec(
+                canonical_source(
+                    "computational_application_case",
                     "downstream_qualification_priorities.csv",
                 ),
                 "f",
-                "Automatically selected qualification roles.",
+                "Historical automated role-selection record; current display is in panel_f_qualification_display.csv.",
             ),
             SourceSpec(
                 canonical_source(
@@ -271,7 +271,7 @@ def source_specs() -> dict[str, list[SourceSpec]]:
                     "qualification_role_selection_audit.csv",
                 ),
                 "f",
-                "Qualification-role eligibility and deterministic selection audit.",
+                "Historical qualification-role eligibility and deterministic selection audit.",
             ),
             SourceSpec(
                 canonical_source(
@@ -309,6 +309,8 @@ def source_specs() -> dict[str, list[SourceSpec]]:
             ),
         ],
         "figureS_application_derived_metrics": [
+            SourceSpec(canonical_source("computational_application_case", "reference_cell_highlights.csv"),
+                       "a,b", "Four displayed candidate identities and curve colours."),
             SourceSpec(
                 canonical_source(
                     "computational_application_case",
@@ -327,6 +329,8 @@ def source_specs() -> dict[str, list[SourceSpec]]:
             ),
         ],
         "reference_cell_scenario_audited": [
+            SourceSpec(canonical_source("computational_application_case", "reference_cell_highlights.csv"),
+                       "b-f", "Four displayed candidate identities and curve colours."),
             SourceSpec(
                 canonical_source(
                     "computational_application_case",
@@ -357,7 +361,15 @@ def source_specs() -> dict[str, list[SourceSpec]]:
                     "downstream_qualification_priorities.csv",
                 ),
                 "b,c,d",
-                "Qualification leads highlighted in the post hoc mapping.",
+                "Historical automated qualification-role record; current highlights include UPR-0581.",
+            ),
+            SourceSpec(
+                canonical_source(
+                    "computational_application_case",
+                    "panel_f_qualification_display.csv",
+                ),
+                "b,c,d,e",
+                "Current highlighted identities: UPR-0343, UPR-0024, UPR-0558, and UPR-0581 (purple).",
             ),
             SourceSpec(
                 canonical_source(
@@ -461,7 +473,7 @@ def source_specs() -> dict[str, list[SourceSpec]]:
             path,
             (
                 "g-i"
-                if path.name == "final_test_metrics_summary_source_data.csv"
+                if path.name in {"final_test_metrics_summary_source_data.csv", "per_seed_property_metrics.csv"}
                 else path.stem.rsplit("_", 1)[-1].lower()
             ),
             "Exact panel-level performance source data.",
@@ -592,6 +604,38 @@ def copy_if_different(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
+def package_source_data(destination: Path, source_map: dict[str, list[SourceSpec]] | None = None) -> list[dict[str, object]]:
+    """Link each figure panel to its canonical CSV without duplicating data."""
+    sources = source_specs() if source_map is None else source_map
+    duplicate_root = destination / "source_data"
+    if duplicate_root.exists() and any(p.is_file() for p in duplicate_root.rglob("*")):
+        raise RuntimeError("Duplicate source-data directory found; preserve its contents outside result_analysis before rebuilding links")
+    rows = []
+    seen = set()
+    for figure in FIGURES:
+        if not sources.get(figure.figure_id):
+            raise RuntimeError(f"No CSV mapping exists for {figure.figure_id}")
+        for source in sources[figure.figure_id]:
+            path = source.path.resolve()
+            path.relative_to(SOURCE_DATA_ROOT.resolve())
+            if not path.is_file():
+                raise FileNotFoundError(path)
+            key = figure.figure_id, path
+            if key in seen:
+                raise RuntimeError(f"Duplicate figure/source link: {key}")
+            seen.add(key)
+            count, columns = csv_shape(path)
+            canonical = relative_origin(path)
+            rows.append(dict(figure_id=figure.figure_id, panel_mapping=source.panels,
+                             csv_file=canonical, canonical_csv_file=canonical,
+                             description=source.description, rows=count, columns=columns,
+                             sha256=sha256(path)))
+    destination.mkdir(parents=True, exist_ok=True)
+    write_rows(destination / "figure_source_map.csv",
+               ["figure_id", "panel_mapping", "csv_file", "canonical_csv_file", "description", "rows", "columns", "sha256"], rows)
+    return rows
+
+
 def package(
     manuscript_figure_dir: Path,
     destination: Path,
@@ -599,17 +643,8 @@ def package(
     figure_root = destination / "figures"
     figure_root.mkdir(parents=True, exist_ok=True)
 
-    legacy_source_root = destination / "source_data"
-    if legacy_source_root.exists():
-        raise RuntimeError(
-            "Legacy copied source data were detected at "
-            f"{legacy_source_root}. Migrate or remove that directory "
-            "explicitly before rebuilding the figure-only results package."
-        )
-
     source_map = source_specs()
     manifest_rows: list[dict[str, object]] = []
-    source_rows: list[dict[str, object]] = []
 
     for spec in FIGURES:
         manuscript_png = manuscript_figure_dir / spec.manuscript_png
@@ -690,24 +725,6 @@ def package(
                 }
             )
 
-        for source in source_map[spec.figure_id]:
-            if not source.path.is_file():
-                raise FileNotFoundError(source.path)
-            rows, columns = csv_shape(source.path)
-            canonical_path = relative_origin(source.path)
-            source_rows.append(
-                {
-                    "figure_id": spec.figure_id,
-                    "panel_mapping": source.panels,
-                    "csv_file": canonical_path,
-                    "description": source.description,
-                    "origin": canonical_path,
-                    "rows": rows,
-                    "columns": columns,
-                    "sha256": sha256(source.path),
-                }
-            )
-
     auxiliary_root = (
         figure_root / "molecular_origin_analysis" / "native_exports"
     )
@@ -759,20 +776,7 @@ def package(
         ],
         manifest_rows,
     )
-    write_rows(
-        destination / "figure_source_map.csv",
-        [
-            "figure_id",
-            "panel_mapping",
-            "csv_file",
-            "description",
-            "origin",
-            "rows",
-            "columns",
-            "sha256",
-        ],
-        source_rows,
-    )
+    package_source_data(destination, source_map)
 
     expected_formats = {"png", "pdf", "svg", "tiff"}
     for spec in FIGURES:
@@ -806,16 +810,28 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=MODULE_ROOT,
     )
+    parser.add_argument(
+        "--source-data-only",
+        action="store_true",
+        help=(
+            "Refresh links to canonical CSVs without copying data or rewriting figure files."
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    package(
-        args.manuscript_figure_dir.resolve(),
-        args.destination.resolve(),
-    )
-    print(f"Packaged manuscript results in {args.destination.resolve()}")
+    destination = args.destination.resolve()
+    if args.source_data_only:
+        package_source_data(destination)
+        print(f"Updated figure source links in {destination / 'figure_source_map.csv'}")
+    else:
+        package(
+            args.manuscript_figure_dir.resolve(),
+            destination,
+        )
+        print(f"Packaged manuscript results in {destination}")
 
 
 if __name__ == "__main__":

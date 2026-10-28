@@ -186,11 +186,29 @@ def assert_data_only() -> None:
         )
 
 
-def assert_no_legacy_manuscript_source_copies() -> None:
-    """Reject known former manuscript source-data publication locations."""
+def assert_result_analysis_source_bundle() -> None:
+    """Validate direct figure-to-source links and reject a duplicate CSV mirror."""
+    result_root = PROJECT_ROOT / "experiments/result_analysis"
+    duplicate_root = result_root / "source_data"
+    if duplicate_root.exists() and any(p.is_file() for p in duplicate_root.rglob("*")):
+        raise RuntimeError("Duplicate result_analysis/source_data found; use the canonical source-data directory")
+    path = result_root / "figure_source_map.csv"
+    if not path.exists():
+        return
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            source = (PROJECT_ROOT / row["canonical_csv_file"]).resolve()
+            source.relative_to(ROOT.resolve())
+            if row["csv_file"] != row["canonical_csv_file"]:
+                raise RuntimeError("Figure source links must point directly to the canonical CSV")
+            if sha256(source) != row["sha256"]:
+                raise RuntimeError(f"Outdated figure source link: {source}")
+
+
+def assert_no_unmanaged_manuscript_source_copies() -> None:
+    """Reject unmanaged copies outside the canonical source-data location."""
 
     forbidden_directories = (
-        PROJECT_ROOT / "experiments" / "result_analysis" / "source_data",
         PROJECT_ROOT / "result_fig" / "source_data",
         PROJECT_ROOT / "LaTex-MIPGraph" / "Fig" / "source_data",
     )
@@ -205,8 +223,8 @@ def assert_no_legacy_manuscript_source_copies() -> None:
     if offenders:
         details = "\n".join(f"- {path}" for path in offenders)
         raise RuntimeError(
-            "Legacy manuscript source-data copies were detected outside the "
-            f"authoritative directory:\n{details}"
+            "Unmanaged manuscript source-data copies were detected outside "
+            f"the authoritative and result-package directories:\n{details}"
         )
 
 
@@ -345,7 +363,7 @@ def rebuild_manifest(paths: list[Path]) -> None:
 
 def main() -> None:
     assert_data_only()
-    assert_no_legacy_manuscript_source_copies()
+    assert_no_unmanaged_manuscript_source_copies()
     paths = panel_source_files()
     assert_no_duplicate_source_tables(paths)
     rebuild_column_dictionary(paths)

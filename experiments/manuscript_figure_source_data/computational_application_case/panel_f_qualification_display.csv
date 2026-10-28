@@ -1,0 +1,5 @@
+priority_order,candidate_id,qualification_role,cation_smiles,anion_smiles,IL_Name,AD_status,protocol_status
+1,UPR-0581,multi-objective lead,CCCCC[n+]1ccn(C)c1,N#C[B-](C#N)(C#N)C#N,1-pentyl-3-methylimidazolium tetracyanoborate,in_domain,P/B/F: P1 / hard fail / hard fail
+2,UPR-0024,transport-focused lead,CC[N+](C)(C)CCOC,N#C[B-](C#N)(C#N)C#N,ethyl(2-methoxyethyl)dimethylammonium tetracyanoborate,borderline,P/B/F: P1 / hard fail / hard fail
+3,UPR-0343,thermal-management lead,CN1C=[N+](C=C1)C,CCC(=O)[O-],"1,3-dimethylimidazolium propionate",in_domain,P/B/F: P1 / hard fail / hard fail
+4,UPR-0558,property-balanced Pareto-retained candidate,CCC[n+]1ccn(C)c1,O=C([O-])C(F)(F)F,1-propyl-3-methylimidazolium trifluoroacetate,in_domain,P/B/F: P1 / P1 / hard fail

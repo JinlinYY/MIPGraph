@@ -392,7 +392,11 @@ def plot_macro_split_summary(
         edgecolor="white",
         linewidth=0.5,
     )
-    ax.set_ylim(0.55, 1.01)
+    repeated = "log_R2_seed_SD" in avg.columns
+    ax.set_ylim(0, 1.07) if repeated else ax.set_ylim(0.55, 1.01)
+    if repeated:
+        ax.errorbar(x, avg["log_R2"], yerr=avg["log_R2_seed_SD"], fmt="none",
+                    ecolor="#343A3D", elinewidth=.65, capsize=2, capthick=.65, zorder=5)
     ax.set_xticks(x)
     ax.set_xticklabels(_split_shorts(split_cases), rotation=20, ha="right")
     ax.set_ylabel(r"macro log-space $R^2$")
@@ -400,7 +404,7 @@ def plot_macro_split_summary(
     for bar, (_, row) in zip(bars, avg.iterrows()):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            float(row["log_R2"]) + 0.012,
+            float(row["log_R2"]) + (float(row["log_R2_seed_SD"])+.02 if repeated else .012),
             f"{row['log_R2']:.3f}",
             ha="center",
             va="bottom",
@@ -408,7 +412,7 @@ def plot_macro_split_summary(
         )
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            0.565,
+            .045 if repeated else .565,
             f"NMAE\n{row['log_NMAE']:.3f}",
             ha="center",
             va="bottom",
@@ -432,6 +436,10 @@ def plot_macro_split_summary(
     source = avg[["split_strategy", "log_MAE", "log_RMSE", "log_R2", "log_NMAE"]].copy()
     source["panel"] = "G"
     source["panel_title"] = "Generalization across split protocols"
+    if repeated:
+        for column in ["log_R2_seed_SD", "log_NMAE_seed_SD", "n_training_seeds"]:
+            if column in avg:
+                source[column] = avg[column].to_numpy()
     return source
 
 
@@ -577,6 +585,10 @@ def load_saved_source_data(
         ],
         ignore_index=True,
     )
+    for column in ["log_R2_seed_SD", "log_NMAE_seed_SD", "n_training_seeds"]:
+        if column in average_metrics:
+            values = average_metrics.set_index("split_strategy")[column]
+            split_metrics[column] = split_metrics["split_strategy"].map(values)
     return predictions, split_metrics
 
 
@@ -711,10 +723,15 @@ def _create_figure_from_frames(
         "i",
         nmae_cmap,
         0.0,
-        0.60,
+        max(0.60, np.ceil(float(split_metrics.loc[split_metrics.property.isin(PROPERTY_ORDER), "log_NMAE"].max())*10)/10),
         "",
         ".2f",
     )
+    if "n_training_seeds" in split_metrics:
+        ax_i.set_yticklabels(["Point", "IL", "Bal.", "Fam."])
+        fig.text(.5, .008,
+                 "All test predictions from seeds 0, 42, 123; metrics are seed means; error bars in g: seed SD.",
+                 ha="center", va="bottom", fontsize=4.7, color="#40464A")
 
     try:
         output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,80 +1,44 @@
-# MIPGraph Architecture
+# MIPGraph architecture
 
-## Architecture
+MIPGraph represents an ionic liquid as a cation–anion pair and predicts density,
+viscosity, electrical conductivity, molar heat capacity, surface tension, and
+thermal conductivity under specified temperature and pressure conditions.
 
-```text
-cation -> shared Uni-Mol2-84M -> CLS + atom representations --\
-                                                                  chemistry-biased
-anion  -> shared Uni-Mol2-84M -> CLS + atom representations --/   cross-ion attention
-                                                                          |
-                                                        CLS bilinear + atom interaction
-                                                                          |
-                                                              pair representation
-                                                                  +-> T/P FiLM
-                                                                  |
-                     packing / cohesion / transport / thermal experts
-                                                                  |
-                    condition-aware property-specific top-k router
-                                                                  |
-                         six independent property heads -> log targets
-```
+## Molecular representation
 
-The four experts follow the mechanism-oriented latent factors in Eqs. (9)-(10) of the
-MIPGraph manuscript. The original static property gate is replaced by a sample- and
-condition-dependent router:
+A shared frozen Uni-Mol2-84M encoder provides CLS and atom-level features for
+the cation and anion. Trainable projections map these features to a common
+representation space. Chemistry-biased cross-ion attention describes atom-level
+interactions between the ions.
 
-```text
-z[p] = sum(m) gate[p, m](ion_pair, T, P) * expert[m](ion_pair)
-```
+The complete ion-pair representation combines cation and anion features,
+cross-ion interaction features, global descriptors, and functional-group
+descriptors. A two-layer, eight-head Transformer fuses these inputs.
 
-The router starts from the manuscript's qualitative property-mechanism priors and selects
-the top two experts by default. The six heads do not consume predictions from other heads.
-Each head receives only the condition-modulated pair representation, its routed physical
-latent, and temperature/pressure basis terms.
+## Conditions and property-specific decoding
 
-## Uni-Mol2 backbone
+Training-fitted temperature and pressure scales define the continuous condition
+inputs. FiLM modulates the fused ion-pair representation. Each property has its
+own router over four shared experts: packing, cohesion, transport, and thermal
+response. Top-two routing combines the selected expert outputs.
 
-The encoder is the official `UniMolV2Model` from `unimol_tools`, initialized with the
-`dptech/Uni-Mol2` 84M checkpoint. The 12-layer backbone produces a 768-dimensional CLS
-representation. A single shared backbone encodes deduplicated cations and anions in one
-forward pass; separate trainable projections preserve their ionic roles.
+Six independent prediction heads combine the condition-modulated representation,
+condition features, and routed latent information. Each head has three hidden
+layers with 512 units. The model returns standardized natural-log targets;
+the fitted target scales convert them to physical-unit predictions.
 
-The ion interaction path combines two complementary terms. The CLS path uses a bilinear
-interaction over whole-ion representations. The atom path applies bidirectional cross-ion
-attention between Uni-Mol2 atomic representations. Attention logits receive trainable
-biases for formal-charge complementarity, hydrogen-bond donor-acceptor compatibility,
-aromatic contacts, and charge strength. No cross-ion distance is used because the dataset
-does not provide reliable liquid-phase ion-pair geometries.
+## Sparse-label objective and evaluation
 
-For the Python 3.9 environment used by this project, install the compatible package
-without replacing the project's NumPy and pandas versions:
+Only available training labels contribute to the masked objective. Effective
+weights combine source reliability and experimental uncertainty. Property-wise
+losses are normalized by their effective-weight sums and combined with the
+configured property coefficients and auxiliary regularization terms.
 
-```powershell
-E:\anaconda\envs\ggnn39\python.exe -m pip install --no-deps unimol_tools==0.1.4.post1
-E:\anaconda\envs\ggnn39\python.exe -m pip install addict huggingface_hub
-```
+Target statistics are fitted only to original experimental training observations
+and are fixed across label-completion settings. Evaluation uses original labels.
+For each property, log-space MAE is divided by the training-fitted target scale;
+macro NMAE is the unweighted mean over the six properties.
 
-The default configuration freezes Uni-Mol2 and trains the projections, interaction,
-Physics-MoE and property heads. Set `unimol2_unfreeze_last_n_layers: 2` for a later
-low-learning-rate backbone fine-tuning stage.
-
-## Feature cache
-
-```powershell
-E:\anaconda\envs\ggnn39\python.exe scripts\build_unimol2_ion_cache.py `
-  --graph-cache data\processed\graph_cache_fg.pt `
-  --output data\processed\unimol2_ion_features.pt
-```
-
-## Training
-
-```powershell
-E:\anaconda\envs\ggnn39\python.exe scripts\train_mipgraphnet.py `
-  --config configs/default.yaml `
-  --run-name mipgraph_seed42 `
-  --monitor-space log `
-  --skip-test-evaluation
-```
-
-Select checkpoints only with validation metrics. Evaluate the fixed test split after model
-and hyperparameter selection is complete.
+The public model components are under `il_property_prediction/src/models/`.
+Configuration files define representation dimensions, routing, loss coefficients,
+and optimization settings for each experiment.

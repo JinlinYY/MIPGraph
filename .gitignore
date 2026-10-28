@@ -80,3 +80,17 @@ experiments/**/tmp/
 # OS metadata
 Thumbs.db
 .DS_Store
+
+# Local study preparation and author-only release materials
+experiments/reviewer_revision/
+OPEN_SOURCE_RELEASE.md
+scripts/prepare_open_source_release.ps1
+experiments/computational_application_case/repository_audit.md
+experiments/computational_application_case/CODE_INVENTORY.csv
+experiments/computational_application_case/APPLICATION_CHAPTER_CHANGELOG.md
+experiments/computational_application_case/chapter_results/README.md
+il_property_prediction/docs/sparse_label_eda_report.md
+
+# Figure panels refer directly to the single canonical CSV directory.
+experiments/result_analysis/source_data/
+experiments/result_analysis/source_data_manifest.csv

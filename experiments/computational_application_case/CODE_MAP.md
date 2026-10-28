@@ -1,42 +1,36 @@
-# Computational application chapter: code map
+# Computational screening workflow
 
-本目录是论文 computational application case 的唯一代码入口。模型训练、前文性能验证和其他论文图不在本目录中复制，应用案例通过适配器读取项目现有模型实现、固定检查点和数据划分。
+This workflow corresponds to the ionic-liquid screening and reference-cell
+analysis in the manuscript and Supporting Information.
 
-## 可复现入口
+## Calculation stages
 
-从项目根目录依次执行：
+1. Define candidate cation–anion combinations from the declared training domain.
+2. Standardize identities and distinguish observed pairs from unseen combinations.
+3. Predict the six properties across the formal temperature window.
+4. Apply whole-window constraints and four-objective Pareto selection.
+5. Evaluate threshold, bootstrap, and cross-protocol decision stability.
+6. Map selected candidates to the specified reference-cell scenario.
 
-```powershell
-E:\anaconda\envs\ggnn39\python.exe experiments\computational_application_case\run_all.py `
-  --config experiments\computational_application_case\configs\auditable_virtual_screening.yaml `
-  --force
-E:\anaconda\envs\ggnn39\python.exe `
-  experiments\computational_application_case\scripts\build_protocol_stability_outputs.py --force
-E:\anaconda\envs\ggnn39\python.exe `
-  experiments\computational_application_case\scripts\build_refactored_application_case.py
-E:\anaconda\envs\ggnn39\python.exe `
-  experiments\computational_application_case\scripts\package_chapter_artifacts.py
-```
+The primary random IL-level checkpoint defines the formal shortlist. Other
+partition-specific checkpoints are evaluated independently for sensitivity.
 
-前三步分别生成正式 random-IL 结果、两个独立协议敏感性结果以及 Figure 5、Figure 6 和 SI 图。最后一步只做文件复制、CSV形状统计和SHA-256清单生成，不修改数值。
+## Code locations
 
-## 目录职责
-
-| 路径 | 职责 |
+| Location | Research function |
 |---|---|
-| `run_all.py` | 完整应用案例流水线入口 |
-| `configs/auditable_virtual_screening.yaml` | 正式 random-IL 单检查点协议 |
-| `configs/protocol_stability_balanced.yaml` | balanced-IL 协议敏感性配置 |
-| `configs/protocol_stability_ion_family.yaml` | ion-family 压力测试配置 |
-| `src/` | 身份审计、适用域、代理量、筛选、Pareto及参考电芯计算 |
-| `scripts/build_protocol_stability_outputs.py` | 独立运行两个辅助检查点，不做模型平均 |
-| `scripts/build_refactored_application_case.py` | 构建当前章节表格、PNG/PDF/SVG和审计文件 |
-| `scripts/package_chapter_artifacts.py` | 仅整理当前应用章节的PNG、SVG和CSV结果 |
-| `tests/` | 离线单元测试和章节契约测试 |
-| `outputs_primary_audited/` | 正式计算的完整运行输出 |
-| `chapter_results/` | 面向论文交付的精简结果包 |
-| `CODE_INVENTORY.csv` | 当前代码、配置和说明文件的哈希清单 |
+| `run_all.py` | Screening entry point |
+| `configs/auditable_virtual_screening.yaml` | Primary screening configuration |
+| `configs/protocol_stability_balanced.yaml` | Property-balanced partition sensitivity |
+| `configs/protocol_stability_ion_family.yaml` | Family-combination partition sensitivity |
+| `src/` | Candidate identities, predictions, constraints, Pareto ranking and reference-cell quantities |
+| `scripts/build_protocol_stability_outputs.py` | Independent secondary-protocol calculations |
+| `scripts/build_refactored_application_case.py` | Figure and numerical-table generation |
+| `scripts/render_screening_figure.py` | Render the released screening figure |
+| `scripts/render_reference_cell_figure.py` | Render the reference-cell figure |
+| `scripts/render_derived_metrics_figure.py` | Render Joule and steady-rise curves |
 
-## 结果边界
-
-正式候选只由 random-IL checkpoint 产生。Balanced-IL和ion-family checkpoint只用于跨协议决策稳定性；参考电芯映射只用于Top-8固定后的事后解释。该代码不声称任何候选已通过真实电化学、液态温区或安全验证。
+Run commands from the repository root using `python`. See `README.md` for the
+released-figure commands. Numerical sources are stored in
+`experiments/manuscript_figure_source_data/computational_application_case/`;
+final figures and their source links are in `experiments/result_analysis/`.

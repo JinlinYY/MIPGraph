@@ -51,7 +51,23 @@ PERFORMANCE: dict[str, Definition] = {
     "log_R2": ("Coefficient of determination evaluated in natural-log target space.", "dimensionless"),
     "log_MAE": ("Mean absolute error evaluated in natural-log target space.", "dimensionless log error"),
     "log_RMSE": ("Root-mean-square error evaluated in natural-log target space.", "dimensionless log error"),
-    "log_NMAE": ("Range-normalized mean absolute error in natural-log target space.", "dimensionless"),
+    "log_NMAE": ("Natural-log-space MAE divided by the original-training-observation standardization scale.", "dimensionless"),
+    "identity": ("Charge-aware standardized cation-anion identity.", "identifier"),
+    "mask": ("Whether this property is an originally observed evaluation label.", "boolean"),
+    "evaluation_fold": ("Dataset partition on which the prediction was evaluated.", "categorical"),
+    "y_true_log": ("Natural logarithm of the observed target plus the numerical offset.", "natural-log target scale"),
+    "y_pred_log": ("Prediction transformed back to the natural-log target scale.", "natural-log target scale"),
+    "absolute_error_log": ("Absolute prediction error in natural-log target space.", "dimensionless log error"),
+    "normalization_std": ("Target standardization scale fitted only to original observations in the training partition.", "natural-log target scale"),
+    "training_seed": ("Random seed identifying an independently trained model.", "integer"),
+    "seed": ("Random seed identifying an independently trained model.", "integer"),
+    "n_training_seeds": ("Number of independently trained models included in the metric mean.", "count"),
+    "label_count": ("Number of original experimental labels for the property and partition.", "count"),
+    "unique_IL_count": ("Number of distinct standardized IL identities represented by the labels.", "count"),
+    "log_MAE_seed_SD": ("Sample standard deviation of log-MAE across training seeds, ddof=1.", "dimensionless log error"),
+    "log_RMSE_seed_SD": ("Sample standard deviation of log-RMSE across training seeds, ddof=1.", "dimensionless log error"),
+    "log_R2_seed_SD": ("Sample standard deviation of log-R2 across training seeds, ddof=1.", "dimensionless"),
+    "log_NMAE_seed_SD": ("Sample standard deviation of log-NMAE across training seeds, ddof=1.", "dimensionless"),
 }
 
 
@@ -149,6 +165,7 @@ PROPERTY_FIELDS: dict[str, Definition] = {
 
 
 APPLICATION_EXACT: dict[str, Definition] = {
+    "protocol_status": ("Displayed primary/balanced/family categorical decisions, in that order.", "not applicable / text"),
     "candidate_id": ("Stable identifier assigned to a candidate ion pair.", "not applicable / identifier"),
     "candidate_type": ("Observed-reference or unseen-recombination candidate class.", "not applicable / categorical"),
     "generation_status": ("Outcome of candidate construction and charge validation.", "not applicable / categorical"),
@@ -457,6 +474,10 @@ def definition_for(bundle: str, column: str) -> tuple[str, str, str]:
                 "curated-bundle",
             )
     if bundle == "computational_application_case":
+        if column == "color":
+            return "Curve colour associated with a displayed candidate.", "hexadecimal RGB", "curated-bundle"
+        if column == "display_order":
+            return "Display order of highlighted candidates; not a screening rank.", "ordinal index", "curated-bundle"
         if column in PROPERTY_FIELDS:
             return *PROPERTY_FIELDS[column], "curated-bundle"
         if column in APPLICATION_EXACT:

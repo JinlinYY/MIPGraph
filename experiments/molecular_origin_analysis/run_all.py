@@ -1,4 +1,4 @@
-"""Unified Windows-compatible entrypoint for the molecular-origin analysis."""
+"""Command-line entry point for molecular structure-property analysis."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ STAGES = [
 def parse_args() -> argparse.Namespace:
     module_root = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
-        description="Run the non-invasive MIPGraph molecular-origin workflow."
+        description="Run MIPGraph molecular structure-property analysis."
     )
     parser.add_argument(
         "--config",

@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import BoundaryNorm, LinearSegmentedColormap
+from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, VPacker
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from rdkit import Chem
 from rdkit.Chem import Draw
@@ -84,6 +85,7 @@ LEGACY_APPLICATION_SOURCE_NAMES = {
     "whole_il_identity_audit_excluded_rows.csv",
 }
 APPLICATION_PANEL_SOURCE_NAMES = {
+    "panel_f_qualification_display.csv",
     "candidate_screening_trajectory_608.csv",
     "chemical_identity_audit_old_unseen_pool.csv",
     "cross_protocol_decision_matrix.csv",
@@ -145,6 +147,19 @@ COLORS = {
     "pale": "#F5F7F8",
 }
 LEAD_COLORS = [COLORS["blue"], COLORS["orange"], COLORS["green"], COLORS["purple"]]
+
+
+def reference_highlight_ids() -> list[str]:
+    """Return the ordered display candidates used in the reference-cell panels."""
+    source = DATA_DIR / "reference_cell_highlights.csv"
+    if source.exists():
+        table = pd.read_csv(source).sort_values("display_order")
+        if table.candidate_id.duplicated().any() or len(table) != len(LEAD_COLORS):
+            raise ValueError("The reference-cell display must specify four distinct candidates")
+        if table.color.str.lower().tolist() != [c.lower() for c in LEAD_COLORS]:
+            raise ValueError("Reference-cell source colours differ from the figure palette")
+        return table.candidate_id.astype(str).tolist()
+    return ["UPR-0343", "UPR-0024", "UPR-0558", "UPR-0581"]
 
 
 def configure_style() -> None:
@@ -1199,10 +1214,52 @@ def _draw_flow_box(
 
 
 ION_PAIR_DISPLAY_NAMES = {
+    ("CCCCC[n+]1ccn(C)c1", "N#C[B-](C#N)(C#N)C#N"): "1-pentyl-3-methylimidazolium tetracyanoborate",
     ("CN1C=[N+](C=C1)C", "CCC(=O)[O-]"): "1,3-dimethylimidazolium propionate",
     ("CC[N+](C)(C)CCOC", "N#C[B-](C#N)(C#N)C#N"): "ethyl(2-methoxyethyl)dimethylammonium tetracyanoborate",
     ("CCC[n+]1ccn(C)c1", "O=C([O-])C(F)(F)F"): "1-propyl-3-methylimidazolium trifluoroacetate",
 }
+
+
+def figure5_display_priorities(
+    final: pd.DataFrame, protocol_matrix: pd.DataFrame
+) -> pd.DataFrame:
+    """Resolve the author-requested panel-f display against audited identities.
+
+    These display roles do not rerun or replace the historical role-selection
+    audit, the formal shortlist, or any numerical screening result.
+    """
+    display_specs = [
+        ("UPR-0581", "multi-objective lead"),
+        ("UPR-0024", "transport-focused lead"),
+        ("UPR-0343", "thermal-management lead"),
+        ("UPR-0558", "property-balanced Pareto-retained candidate"),
+    ]
+    lookup = final.set_index("candidate_id", verify_integrity=True)
+    status_lookup = protocol_matrix.pivot(
+        index="candidate_id", columns="protocol", values="decision_label"
+    )
+    records = []
+    for order, (candidate_id, role) in enumerate(display_specs, start=1):
+        row = lookup.loc[candidate_id]
+        cation, anion = str(row["cation_smiles"]), str(row["anion_smiles"])
+        name = ION_PAIR_DISPLAY_NAMES[(cation, anion)]
+        statuses = status_lookup.loc[candidate_id]
+        protocol_status = "P/B/F: " + " / ".join(
+            str(statuses[protocol]).replace("\n", " ")
+            for protocol in PROTOCOL_ORDER
+        )
+        records.append({
+            "priority_order": order,
+            "candidate_id": candidate_id,
+            "qualification_role": role,
+            "cation_smiles": cation,
+            "anion_smiles": anion,
+            "IL_Name": name,
+            "AD_status": str(row["AD_status"]),
+            "protocol_status": protocol_status,
+        })
+    return pd.DataFrame(records)
 
 
 def _draw_ion_pair(
@@ -1223,15 +1280,48 @@ def _draw_ion_pair(
         useSVG=False,
     )
     ax.axis("off")
-    image_ax = ax.inset_axes([0.00, 0.02, 0.58, 0.82])
+    image_ax = ax.inset_axes([0.00, 0.03, 0.44, 0.80])
     image_ax.imshow(image)
     image_ax.axis("off")
     name = ION_PAIR_DISPLAY_NAMES.get((cation, anion), "identity-audited ion pair")
-    ax.text(0.00, 0.98, candidate_id, transform=ax.transAxes, ha="left", va="top", fontsize=5.6, fontweight="bold")
-    ax.text(0.60, 0.92, role, transform=ax.transAxes, ha="left", va="top", fontsize=4.7, fontweight="bold", color=COLORS["red"], wrap=True)
-    ax.text(0.60, 0.64, name, transform=ax.transAxes, ha="left", va="top", fontsize=4.2, color=COLORS["ink"], wrap=True)
-    ax.text(0.60, 0.34, f"AD: {ad_status}", transform=ax.transAxes, ha="left", va="top", fontsize=4.1, color=COLORS["gray"])
-    ax.text(0.60, 0.19, protocol_status, transform=ax.transAxes, ha="left", va="top", fontsize=3.8, color=COLORS["gray"], linespacing=0.9)
+    ax.text(0.00, 0.99, candidate_id, transform=ax.transAxes, ha="left", va="top", fontsize=6.7, fontweight="bold")
+    role_text = role
+    if role == "property-balanced Pareto-retained candidate":
+        role_text = "property-balanced\nPareto-retained candidate"
+    display_names = {
+        "UPR-0581": "1-pentyl-3-methylimidazolium\ntetracyanoborate",
+        "UPR-0024": "ethyl(2-methoxyethyl)\ndimethylammonium\ntetracyanoborate",
+        "UPR-0343": "1,3-dimethylimidazolium\npropionate",
+        "UPR-0558": "1-propyl-3-methylimidazolium\ntrifluoroacetate",
+    }
+    name_y = 0.64 if "\n" in role_text else 0.77
+    ax.text(0.47, 0.99, role_text, transform=ax.transAxes, ha="left", va="top", fontsize=6.0, fontweight="bold", color=COLORS["red"], linespacing=1.0)
+    # Stack metadata immediately below the actual multiline name. A fixed
+    # point gap keeps two- and three-line names equally close to AD/P/B/F.
+    details = VPacker(
+        children=[
+            TextArea(
+                display_names.get(candidate_id, name),
+                textprops={"fontsize": 5.3, "color": "black", "linespacing": 1.0},
+            ),
+            TextArea(
+                f"AD: {ad_status}\n{protocol_status}",
+                textprops={"fontsize": 5.2, "color": "black", "linespacing": 1.1},
+            ),
+        ],
+        align="left",
+        pad=0,
+        sep=1.5,
+    )
+    ax.add_artist(AnchoredOffsetbox(
+        loc="upper left",
+        child=details,
+        bbox_to_anchor=(0.47, name_y),
+        bbox_transform=ax.transAxes,
+        pad=0,
+        borderpad=0,
+        frameon=False,
+    ))
 
 
 def make_figure5(
@@ -1241,18 +1331,21 @@ def make_figure5(
     margins: pd.DataFrame,
     protocol_matrix: pd.DataFrame,
     priorities: pd.DataFrame,
+    *,
+    output_stem: str = "figure5_auditable_virtual_screening_validation",
 ) -> list[Path]:
     """Create Figure 5 with the requested a--f application-only panels."""
 
     configure_style()
-    fig = plt.figure(figsize=(7.25, 3.75))
+    mpl.rcParams.update({"axes.labelsize": 7.4, "xtick.labelsize": 6.8, "ytick.labelsize": 6.8})
+    fig = plt.figure(figsize=(7.30, 3.35))
     gs = fig.add_gridspec(
         2,
         5,
         height_ratios=[0.65, 2.05],
-        width_ratios=[1.15, 1.00, 1.00, 1.05, 2.05],
-        hspace=0.42,
-        wspace=0.58,
+        width_ratios=[1.35, 1.05, 1.05, 1.10, 3.05],
+        hspace=0.23,
+        wspace=0.33,
         left=0.045,
         right=0.992,
         top=0.965,
@@ -1263,25 +1356,23 @@ def make_figure5(
 
     # a | identity-controlled candidate-space funnel.
     panel_title_wide(ax_a, "a", "Identity-controlled candidate-space funnel")
-    generation = json.loads(
-        (PRIMARY_ROOT / "steps" / "candidate_generation.json").read_text(encoding="utf-8")
-    )
-    screening = json.loads((PRIMARY_ROOT / "steps" / "screening.json").read_text(encoding="utf-8"))
-    pareto = json.loads((PRIMARY_ROOT / "steps" / "pareto.json").read_text(encoding="utf-8"))
+    # Replot from published panel data; no checkpoint or inference is needed.
+    funnel = pd.read_csv(DATA_DIR / "panel_a_candidate_space_funnel.csv")
+    counts = funnel.set_index("stage")["count"]
     stages = [
-        ("Combinatorial\npairs", int(generation["theoretical_combinations"])),
-        ("InChI identity-\nnew pool", int(generation["valid_unseen_pool"])),
-        ("Evaluated by\nprimary model", int(generation["unseen_candidates"])),
-        ("Hard-feasible", int(screening["hard_constraint_pass"])),
-        ("Pareto rank 1", int(pareto["pareto_rank_1"])),
-        ("Formal\nshortlist", int(pareto["final_recommendations"])),
+        ("Combinatorial\npairs", int(counts["combinatorial_pairs"])),
+        ("InChI identity-\nnew pool", int(counts["InChI_identity_new_pool"])),
+        ("Evaluated by\nprimary model", int(counts["evaluated_by_primary_model"])),
+        ("Hard-feasible", int(counts["hard_feasible"])),
+        ("Pareto rank 1", int(counts["Pareto_rank_1"])),
+        ("Formal\nshortlist", int(counts["formal_shortlist"])),
     ]
     palette = [COLORS["navy"], COLORS["blue"], COLORS["teal"], COLORS["gold"], COLORS["orange"], COLORS["red"]]
     width_weights = np.array([1.05, 1.20, 1.25, 0.95, 0.95, 1.05], dtype=float)
     left, right, gap = 0.015, 0.985, 0.018
     stage_widths = width_weights / width_weights.sum() * (right - left - gap * (len(stages) - 1))
     x_left = left
-    box_y, box_height = 0.34, 0.36
+    box_y, box_height = 0.34, 0.58
     for index, ((label, value), width, color) in enumerate(zip(stages, stage_widths, palette)):
         ax_a.add_patch(
             FancyBboxPatch(
@@ -1295,8 +1386,10 @@ def make_figure5(
             )
         )
         center = x_left + width / 2
-        ax_a.text(center, box_y + 0.235, f"{value}", ha="center", va="center", fontsize=6.6, color="white", fontweight="bold")
-        ax_a.text(center, box_y + 0.115, label, ha="center", va="center", fontsize=5.25, color="white", fontweight="bold", linespacing=0.92)
+        # Separate the number and label by their text edges rather than their
+        # centres, so two-line labels cannot collide with the count above.
+        ax_a.text(center, 0.70, f"{value}", ha="center", va="bottom", fontsize=7.8, color="white", fontweight="bold")
+        ax_a.text(center, 0.62, label, ha="center", va="top", fontsize=6.2, color="white", fontweight="bold", linespacing=1.05)
         if index < len(stages) - 1:
             ax_a.add_patch(
                 FancyArrowPatch(
@@ -1309,8 +1402,8 @@ def make_figure5(
                 )
             )
         x_left += width + gap
-    ax_a.text(0.50, 0.17, "Selection window: 298.15–353.15 K  |  primary model: random-IL checkpoint", transform=ax_a.transAxes, ha="center", va="center", fontsize=5.8, color=COLORS["gray"])
-    ax_a.text(0.985, 0.02, "Formal shortlist fixed  →  post hoc reference-cell mapping", transform=ax_a.transAxes, ha="right", va="bottom", fontsize=5.5, color=COLORS["red"], fontweight="bold")
+    ax_a.text(0.50, 0.15, "Selection window: 298.15–353.15 K  |  primary model: random-IL checkpoint", transform=ax_a.transAxes, ha="center", va="center", fontsize=6.5, color=COLORS["gray"])
+    ax_a.text(0.985, -0.06, "Formal shortlist fixed  →  post hoc reference-cell mapping", transform=ax_a.transAxes, ha="right", va="bottom", fontsize=6.0, color=COLORS["red"], fontweight="bold")
     ax_a.set_xlim(0, 1)
     ax_a.set_ylim(0, 1)
     ax_a.axis("off")
@@ -1318,22 +1411,22 @@ def make_figure5(
     # b | two independent identity flows; deliberately no shared quantitative axis.
     panel_title_compact(ax_b, "b", "Identity audit")
     ax_b.axvline(0.50, color=COLORS["light"], lw=0.8)
-    ax_b.text(0.25, 0.965, "old SMILES", ha="center", va="top", fontsize=4.8, color=COLORS["gray"])
-    ax_b.text(0.75, 0.965, "current InChI", ha="center", va="top", fontsize=4.8, color=COLORS["gray"])
-    _draw_flow_box(ax_b, (0.25, 0.80), "SMILES-novel\n649", COLORS["light"], 0.38, 0.15, 5.0)
-    _draw_flow_box(ax_b, (0.25, 0.58), "InChI\nre-audit", "#DDE7EE", 0.34, 0.14, 4.9)
-    _draw_flow_box(ax_b, (0.25, 0.36), "genuine 522", "#D8EFE5", 0.38, 0.13, 4.8)
-    _draw_flow_box(ax_b, (0.25, 0.17), "known identity 127", "#F4D8D2", 0.38, 0.13, 4.5)
+    ax_b.text(0.25, 0.965, "old SMILES", ha="center", va="top", fontsize=5.7, color=COLORS["gray"])
+    ax_b.text(0.75, 0.965, "current InChI", ha="center", va="top", fontsize=5.7, color=COLORS["gray"])
+    _draw_flow_box(ax_b, (0.25, 0.80), "SMILES-\nnovel\n649", COLORS["light"], 0.38, 0.15, 5.8)
+    _draw_flow_box(ax_b, (0.25, 0.58), "InChI\nre-audit", "#DDE7EE", 0.38, 0.14, 5.8)
+    _draw_flow_box(ax_b, (0.25, 0.36), "genuine\n522", "#D8EFE5", 0.38, 0.13, 5.8)
+    _draw_flow_box(ax_b, (0.25, 0.17), "known\nidentity\n127", "#F4D8D2", 0.38, 0.13, 5.6)
     ax_b.annotate("", (0.25, 0.66), (0.25, 0.72), arrowprops=dict(arrowstyle="->", lw=0.7, color=COLORS["gray"]))
     ax_b.annotate("", (0.25, 0.45), (0.25, 0.50), arrowprops=dict(arrowstyle="->", lw=0.7, color=COLORS["gray"]))
     ax_b.annotate("", (0.25, 0.245), (0.25, 0.29), arrowprops=dict(arrowstyle="->", lw=0.7, color=COLORS["gray"]))
-    _draw_flow_box(ax_b, (0.75, 0.80), "30 cations ×\n30 anions", "#DDE7EE", 0.38, 0.15, 4.9)
-    _draw_flow_box(ax_b, (0.75, 0.58), "900 nominal\npairs", "#DDE7EE", 0.38, 0.14, 4.9)
-    _draw_flow_box(ax_b, (0.75, 0.36), "charge-aware\nInChI exclusion", "#D8EFE5", 0.38, 0.15, 4.6)
-    _draw_flow_box(ax_b, (0.75, 0.14), f"identity-new\n{identity_counts['new_valid_unseen_pool']}", "#CFE8F3", 0.38, 0.15, 4.9)
+    _draw_flow_box(ax_b, (0.75, 0.80), "30 cations\n× 30 anions", "#DDE7EE", 0.38, 0.15, 5.6)
+    _draw_flow_box(ax_b, (0.75, 0.58), "900 nominal\npairs", "#DDE7EE", 0.38, 0.14, 5.6)
+    _draw_flow_box(ax_b, (0.75, 0.36), "charge-aware\nInChI\nexclusion", "#D8EFE5", 0.38, 0.15, 5.6)
+    _draw_flow_box(ax_b, (0.75, 0.14), f"identity-new\n{identity_counts['new_valid_unseen_pool']}", "#CFE8F3", 0.38, 0.15, 5.6)
     for upper, lower in [(0.72, 0.66), (0.50, 0.44), (0.275, 0.22)]:
         ax_b.annotate("", (0.75, lower), (0.75, upper), arrowprops=dict(arrowstyle="->", lw=0.7, color=COLORS["gray"]))
-    ax_b.text(0.50, 0.02, "independent identity audits", fontsize=4.8, color=COLORS["gray"], ha="center", va="bottom")
+    ax_b.text(0.50, 0.02, "independent identity audits", fontsize=5.5, color=COLORS["gray"], ha="center", va="bottom")
     ax_b.set_xlim(0, 1)
     ax_b.set_ylim(0, 1)
     ax_b.axis("off")
@@ -1349,7 +1442,9 @@ def make_figure5(
     ax_c.imshow(matrix.to_numpy(), aspect="auto", cmap=cmap, vmin=-vmax, vmax=vmax)
     ax_c.set_xticks(range(len(columns)), [r"$\sigma$", r"$\eta$", r"$C_v$", r"$\alpha$", "ST\nenvelope"], rotation=0)
     ax_c.set_yticks(range(len(matrix)), [value.replace("UPR-", "") for value in matrix.index])
-    ax_c.set_ylabel("UPR candidate")
+    # Candidate IDs already label the rows; omitting the redundant vertical
+    # label leaves a clear gutter beside the adjacent identity-flow panel.
+    ax_c.set_ylabel("")
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             raw = margins[
@@ -1357,8 +1452,8 @@ def make_figure5(
                 & margins["constraint"].eq(columns[j])
             ]["log2_margin"].iloc[0]
             label = r"$\geq4$" if not np.isfinite(raw) or raw >= 4.0 else f"{raw:.1f}"
-            ax_c.text(j, i, label, ha="center", va="center", fontsize=4.5, color=COLORS["ink"])
-    ax_c.text(0.5, -0.19, r"log$_2$ constraint margin", transform=ax_c.transAxes, ha="center", fontsize=5.4)
+            ax_c.text(j, i, label, ha="center", va="center", fontsize=5.5, color=COLORS["ink"])
+    ax_c.text(0.5, -0.16, "log$_2$ constraint\nmargin", transform=ax_c.transAxes, ha="center", va="top", fontsize=6.0, linespacing=1.05)
     ax_c.tick_params(length=0)
     for spine in ax_c.spines.values():
         spine.set_visible(False)
@@ -1377,7 +1472,7 @@ def make_figure5(
         height=0.68,
     )
     ax_d.axvline(0.5, color=COLORS["gray"], lw=0.6, ls="--")
-    ax_d.set_xlabel("Top-8 selection frequency")
+    ax_d.set_xlabel("Top-8 selection\nfrequency")
     ax_d.set_xlim(0, 1.02)
     ax_d.grid(axis="x", alpha=0.16, lw=0.5)
 
@@ -1399,15 +1494,15 @@ def make_figure5(
     ax_e.set_yticks(range(len(decision)), [value.replace("UPR-", "") for value in decision.index])
     for i in range(decision.shape[0]):
         for j in range(decision.shape[1]):
-            ax_e.text(j, i, str(labels.iloc[i,j]), ha="center", va="center", fontsize=3.7, linespacing=0.85)
+            ax_e.text(j, i, str(labels.iloc[i,j]), ha="center", va="center", fontsize=5.3, linespacing=1.0)
     ax_e.text(
-        0.98,
-        -0.20,
-        "Family = stricter family-transfer stress test",
+        0.50,
+        -0.21,
+        "Family: family-transfer\nstress-test protocol",
         transform=ax_e.transAxes,
-        ha="right",
+        ha="center",
         va="top",
-        fontsize=4.5,
+        fontsize=5.3,
         color=COLORS["gray"],
     )
     ax_e.tick_params(length=0)
@@ -1417,17 +1512,15 @@ def make_figure5(
     # f | four structures and their qualification roles.
     panel_title_compact(ax_f, "f", "Qualification roles")
     ax_f.axis("off")
-    status_lookup = protocol_matrix.pivot(
-        index="candidate_id", columns="protocol", values="decision_label"
-    )
-    for index, row in enumerate(priorities.sort_values("priority_order").itertuples(index=False)):
-        inset = ax_f.inset_axes([0.00, 0.75 - index * 0.25, 1.00, 0.238])
-        candidate_status = status_lookup.loc[str(row.candidate_id)]
-        protocol_status = (
-            f"P/B/F: {str(candidate_status.get('Random-IL primary', 'n/a')).replace(chr(10), ' ')} / "
-            f"{str(candidate_status.get('Balanced-IL sensitivity', 'n/a')).replace(chr(10), ' ')} / "
-            f"{str(candidate_status.get('Ion-family sensitivity', 'n/a')).replace(chr(10), ' ')}"
-        )
+    display_priorities = figure5_display_priorities(final, protocol_matrix)
+    display_priorities.to_csv(DATA_DIR / "panel_f_qualification_display.csv", index=False)
+    # Spread the four entries through the full visible height of c--e,
+    # including their bottom label band, instead of crowding them into the
+    # matrix-only height and leaving the bottom of f empty.
+    entry_height = 0.238
+    entry_step = 0.325
+    for index, row in enumerate(display_priorities.itertuples(index=False)):
+        inset = ax_f.inset_axes([0.00, 0.988 - entry_height - index * entry_step, 1.00, entry_height])
         _draw_ion_pair(
             inset,
             str(row.cation_smiles),
@@ -1435,10 +1528,22 @@ def make_figure5(
             str(row.candidate_id),
             str(row.qualification_role),
             str(row.AD_status),
-            protocol_status,
+            str(row.protocol_status),
         )
 
-    base = FIGURE_DIR / "figure5_auditable_virtual_screening_validation"
+    ax_a.title.set_fontsize(8.5)
+    for ax in (ax_b, ax_c, ax_d, ax_e, ax_f):
+        ax.title.set_fontsize(7.8)
+    ax_f.texts[0].set_x(-0.06)
+
+    # Use pure black for all neutral text while retaining the white funnel
+    # labels, red role labels, and the existing colours of non-text artists.
+    neutral_text_colors = {COLORS["gray"].lower(), COLORS["ink"].lower()}
+    for text in fig.findobj(match=mpl.text.Text):
+        if mpl.colors.to_hex(text.get_color()).lower() in neutral_text_colors:
+            text.set_color("#000000")
+
+    base = FIGURE_DIR / output_stem
     paths = [
         base.with_suffix(".pdf"),
         base.with_suffix(".png"),
@@ -1499,25 +1604,50 @@ def _curve_with_stress(ax: plt.Axes, frame: pd.DataFrame, column: str, prioritie
     ax.grid(alpha=0.14, lw=0.45)
 
 
-def make_figure6(final: pd.DataFrame, priorities: pd.DataFrame) -> list[Path]:
+def make_figure6(
+    final: pd.DataFrame,
+    priorities: pd.DataFrame,
+    *,
+    output_stem: str = "figure6_reference_cell_scenario_audited",
+    write_source_data: bool = True,
+) -> list[Path]:
     """Create Figure 6 as a strictly post hoc engineering interpretation."""
 
     configure_style()
     metrics = pd.read_csv(DATA_DIR / "reference_cell_metrics_temperature.csv", low_memory=False)
-    robust = pd.read_csv(DATA_DIR / "candidate_robust_summary.csv", low_memory=False)
     summary = pd.read_csv(DATA_DIR / "reference_cell_candidate_summary.csv")
-    trace = pd.read_csv(DATA_DIR / "screening_trace.csv", low_memory=False)
-    thresholds = json.loads((DATA_DIR / "reference_thresholds.json").read_text(encoding="utf-8"))
-    fig = plt.figure(figsize=(7.25, 3.15))
-    gs = fig.add_gridspec(2,5,height_ratios=[0.72,1.55],width_ratios=[1.24,1.02,1.02,1.02,1.18],hspace=0.45,wspace=0.62,left=0.055,right=0.992,top=0.96,bottom=0.10)
+    trace_path = DATA_DIR / "screening_trace.csv"
+    if not trace_path.exists():
+        trace_path = DATA_DIR / "candidate_screening_trajectory_608.csv"
+    trace = pd.read_csv(trace_path, low_memory=False)
+    threshold_path = DATA_DIR / "reference_thresholds.json"
+    if threshold_path.exists():
+        thresholds = json.loads(threshold_path.read_text(encoding="utf-8"))
+    else:
+        margins = pd.read_csv(DATA_DIR / "final_candidate_constraint_margins.csv")
+        threshold_values = margins.groupby("metric")["threshold"].first()
+        thresholds = {
+            "volumetric_heat_capacity_min": threshold_values["volumetric_heat_capacity_worst"],
+            "thermal_diffusivity_min": threshold_values["thermal_diffusivity_worst"],
+        }
+    # Fixed display order for the four complementary candidate roles.
+    highlight_ids = reference_highlight_ids()
+    priorities = final.set_index("candidate_id", verify_integrity=True).loc[highlight_ids].reset_index()
+    priorities["priority_order"] = np.arange(1, len(priorities) + 1)
+    mpl.rcParams.update({"axes.labelsize": 7.5, "xtick.labelsize": 7.0, "ytick.labelsize": 7.0})
+    fig = plt.figure(figsize=(7.20, 2.83))
+    gs = fig.add_gridspec(2,5,height_ratios=[0.72,1.55],width_ratios=[1.24,1.02,1.02,1.02,1.18],hspace=0.24,wspace=0.58,left=0.055,right=0.992,top=0.96,bottom=0.10)
     ax_a = fig.add_subplot(gs[0,:])
     axes = [fig.add_subplot(gs[1,i]) for i in range(5)]
     _cell_schematic(ax_a, "a")
+    ax_a.title.set_fontsize(8.8)
+    for text in ax_a.texts:
+        text.set_fontsize(text.get_fontsize() * 1.16)
 
     ax_b, ax_c, ax_d, ax_e, ax_f = axes
     panel_title_compact(ax_b, "b", "Resistance")
     _curve_with_stress(ax_b, metrics, "electrolyte_resistance_ohm", priorities, r"$R_{el}$ (Ω)", logy=True)
-    ax_b.legend(frameon=False, loc="upper right", handlelength=1.0, fontsize=4.8)
+    ax_b.legend(frameon=False, loc="upper right", handlelength=1.0, fontsize=6.0, labelspacing=0.30)
 
     panel_title_compact(ax_c, "c", "Thermal-property map")
     unseen = trace[trace["candidate_type"].eq("unseen_pair_recombination")]
@@ -1530,7 +1660,7 @@ def make_figure6(final: pd.DataFrame, priorities: pd.DataFrame) -> list[Path]:
         ax_c.scatter(float(row["volumetric_heat_capacity_worst"])/1e6, float(row["thermal_diffusivity_worst"])*1e8, s=30, color=color, edgecolor="white", linewidth=0.5, zorder=3)
     ax_c.axvline(float(thresholds["volumetric_heat_capacity_min"])/1e6, color=COLORS["gray"], lw=0.6, ls="--")
     ax_c.axhline(float(thresholds["thermal_diffusivity_min"])*1e8, color=COLORS["gray"], lw=0.6, ls="--")
-    ax_c.set_xlabel(r"$C_{v,\mathrm{worst}}$ (MJ m$^{-3}$ K$^{-1}$)")
+    ax_c.set_xlabel("$C_{v,\\mathrm{worst}}$\n(MJ m$^{-3}$ K$^{-1}$)")
     ax_c.set_ylabel(r"$\alpha_{\mathrm{worst}}$ ($10^{-8}$ m$^2$ s$^{-1}$)")
     ax_c.grid(alpha=0.14,lw=0.45)
 
@@ -1554,10 +1684,10 @@ def make_figure6(final: pd.DataFrame, priorities: pd.DataFrame) -> list[Path]:
         else:
             color, size = COLORS["gray"], 18
         ax_e.scatter(row.cold,row.hot,s=size,color=color,edgecolor="white",linewidth=0.45)
-        ax_e.text(row.cold,row.hot,row.candidate_id.replace("UPR-",""),fontsize=4.7,ha="left",va="bottom")
+        ax_e.text(row.cold,row.hot,row.candidate_id.replace("UPR-",""),fontsize=5.8,ha="left",va="bottom")
     ax_e.set_xlabel(r"$R_{278}/R_{298}$")
     ax_e.set_ylabel(r"$R_{373}/R_{298}$")
-    ax_e.text(0.04,0.04,"extended endpoints only",transform=ax_e.transAxes,ha="left",va="bottom",fontsize=5.0,color=COLORS["red"])
+    ax_e.text(0.50,0.56,"extended\nendpoints only",transform=ax_e.transAxes,ha="center",va="center",fontsize=5.8,color=COLORS["red"],linespacing=1.05)
     ax_e.grid(alpha=0.14,lw=0.45)
 
     panel_title_compact(ax_f, "f", "Exceedance context")
@@ -1566,14 +1696,22 @@ def make_figure6(final: pd.DataFrame, priorities: pd.DataFrame) -> list[Path]:
     selected_summary = population[population["candidate_id"].isin(final["candidate_id"].astype(str))]
     ax_f.scatter(selected_summary["reference_cell_exceedance_index_worst_temperature_K"], selected_summary["reference_cell_exceedance_index_worst"], s=25, color=COLORS["blue"], marker="D", edgecolor="white", linewidth=0.45)
     ax_f.axhline(1.0,color=COLORS["red"],lw=0.65,ls="--")
-    ax_f.text(MAIN_T_MIN+1,1.02,r"$\Xi_{\max}=1$",fontsize=5.2,color=COLORS["red"],va="bottom")
+    ax_f.text(MAIN_T_MIN+1,1.02,r"$\Xi_{\max}=1$",fontsize=6.0,color=COLORS["red"],va="bottom")
     ax_f.set_xlim(MAIN_T_MIN,MAIN_T_MAX)
     ax_f.set_yscale("log")
     ax_f.set_xlabel(r"$T$ at $\Xi_{\max}$ (K)")
     ax_f.set_ylabel(r"$\Xi_{\max}$")
     ax_f.grid(alpha=0.14,lw=0.45)
 
-    base = FIGURE_DIR / "figure6_reference_cell_scenario_audited"
+    for ax in axes:
+        ax.title.set_fontsize(7.4)
+        ax.texts[0].set_fontsize(9.0)
+    neutral_text_colors = {COLORS["gray"].lower(), COLORS["ink"].lower()}
+    for text in fig.findobj(match=mpl.text.Text):
+        if mpl.colors.to_hex(text.get_color()).lower() in neutral_text_colors:
+            text.set_color("#000000")
+
+    base = FIGURE_DIR / output_stem
     paths = [
         base.with_suffix(".pdf"),
         base.with_suffix(".png"),
@@ -1583,19 +1721,21 @@ def make_figure6(final: pd.DataFrame, priorities: pd.DataFrame) -> list[Path]:
     fig.savefig(paths[1], dpi=600)
     fig.savefig(paths[2])
     plt.close(fig)
-    trade.to_csv(DATA_DIR / "extended_endpoint_transport_tradeoff.csv", index=False)
+    if write_source_data:
+        trade.to_csv(DATA_DIR / "extended_endpoint_transport_tradeoff.csv", index=False)
     return paths
 
 
-def make_si_figures(
-    priorities: pd.DataFrame,
-    sensitivity: pd.DataFrame,
-    bootstrap_iterations: pd.DataFrame,
-    bootstrap_candidates: pd.DataFrame,
-) -> list[Path]:
+def make_derived_metrics_figure() -> list[Path]:
+    """Render the two derived-metric panels with all four displayed leads."""
     configure_style()
     metrics = pd.read_csv(DATA_DIR / "reference_cell_metrics_temperature.csv", low_memory=False)
-    priority_ids = priorities.sort_values("priority_order").drop_duplicates("candidate_id")["candidate_id"].astype(str).tolist()
+    # Match Figure 6's display order and preserve the original three colours.
+    priority_ids = reference_highlight_ids()
+    for candidate_id in priority_ids:
+        candidate = metrics[metrics["candidate_id"].eq(candidate_id)]
+        if candidate.empty or not candidate["analysis_window"].eq("main").any():
+            raise ValueError(f"Missing released reference-cell curve for {candidate_id}")
     fig, axes = plt.subplots(1,2,figsize=(7.15,2.30),constrained_layout=True)
     specs = [
         ("joule_heating_power_W", r"$\dot Q_J=I^2R_{el}$ (W)", "a", "Constant-current Joule term"),
@@ -1626,6 +1766,16 @@ def make_si_figures(
     fig.savefig(paths[1],dpi=600)
     fig.savefig(paths[2])
     plt.close(fig)
+    return paths
+
+
+def make_si_figures(
+    priorities: pd.DataFrame,
+    sensitivity: pd.DataFrame,
+    bootstrap_iterations: pd.DataFrame,
+    bootstrap_candidates: pd.DataFrame,
+) -> list[Path]:
+    paths = make_derived_metrics_figure()
 
     fig, axes = plt.subplots(1, 3, figsize=(7.15, 2.35), constrained_layout=True)
     panel_title(axes[0], "a", "Prespecified threshold grid")
@@ -1720,7 +1870,7 @@ def copy_source_data(paths: list[Path]) -> None:
         )
         raise RuntimeError(
             "Application source-data publication must contain the exact "
-            f"18-panel table set; missing={missing_names}, extra={extra_names}"
+            f"{len(APPLICATION_PANEL_SOURCE_NAMES)}-table set; missing={missing_names}, extra={extra_names}"
         )
     missing_paths = sorted(path for path in paths if not path.is_file())
     if missing_paths:
@@ -1978,6 +2128,7 @@ def main() -> int:
     }
     (AUDIT_DIR/"refactored_application_evidence.json").write_text(json.dumps(evidence,indent=2,ensure_ascii=False),encoding="utf-8")
     copy_source_data([
+        DATA_DIR/"panel_f_qualification_display.csv",
         DATA_DIR/"chemical_identity_audit_old_unseen_pool.csv",
         DATA_DIR/"standard_inchikey_identity_audit_608.csv",
         DATA_DIR/"threshold_sensitivity.csv",

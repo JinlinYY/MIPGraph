@@ -1,62 +1,36 @@
-# Performance-results figure
+# Predictive performance across split protocols
 
-This module reproduces the manuscript performance figure containing:
+This module creates the nine-panel performance figure in the current manuscript.
 
-- panels a–f: property-wise experimental-versus-predicted parity plots for
-  point, whole-IL, property-balanced whole-IL and ion-family split protocols;
-- panel g: macro log-space performance across protocols;
-- panels h–i: property-wise log-space \(R^2\) and NMAE matrices.
+- Panels a–f show test predictions for density, viscosity, electrical conductivity,
+  molar heat capacity, surface tension, and thermal conductivity.
+- Panel g shows mean macro log-space R², sample-SD error bars across training
+  seeds, and mean macro NMAE.
+- Panels h and i show the mean property-wise log-space R² and NMAE.
 
-The plotting code does not retrain MIPGraph and does not alter any metric.
-
-## Files
-
-```text
-performance_results/
-|-- plot_performance_results.py  # single formal plotting entrypoint
-|-- prepare_inputs.py            # optional conversion from raw split outputs
-|-- tests/                       # source-data and rendering tests
-`-- README.md
-```
-
-## Reproduce the current audited figure
+The four partitions are random-point, random IL-level, property-balanced IL-level,
+and family-pair-disjoint. Training seeds are 0, 42 and 123 under fixed partitions.
+Parity plots contain the predictions from all three runs; annotations average
+the per-run metrics. Each property-wise NMAE uses the original-training-observation
+standardization scale. Metrics use originally observed test labels.
 
 From the repository root:
 
-```powershell
+```bash
 python -m experiments.performance_results.plot_performance_results
 ```
 
-The default source tables are the tracked CSVs under
-`experiments/manuscript_figure_source_data/performance_results/`. Outputs are
-written to
-`experiments/result_analysis/figures/performance_results/` at 600 dpi.
+Default inputs are the A–I CSVs in
+`experiments/manuscript_figure_source_data/performance_results/`. Output files are
+written to `experiments/result_analysis/figures/performance_results/` as PNG,
+PDF, SVG, and TIFF. The raster output uses 600 dpi.
 
-Alternative audited source-data directory:
+Custom paths:
 
-```powershell
-python -m experiments.performance_results.plot_performance_results `
-  --source-data-dir path\to\performance_results_source_data `
-  --output-dir path\to\figures
+```bash
+python -m experiments.performance_results.plot_performance_results   --source-data-dir path/to/performance_results   --output-dir path/to/figures
 ```
 
-## Refresh source data from model outputs
-
-Only use this route when the four split-protocol evaluations have been
-regenerated:
-
-```powershell
-python -m experiments.performance_results.prepare_inputs
-python -m experiments.performance_results.plot_performance_results `
-  --input-root il_property_prediction\outputs\mps_weak_merged_validation\figure_inputs
-```
-
-`prepare_inputs.py` expects the split folders `random_point`,
-`random_il_level`, `property_balanced_il_level` and `ion_family`. The plotting
-script then exports updated panel-level A–I CSVs alongside the figure.
-
-## Scientific boundary
-
-The panels report held-out predictive performance under four split protocols.
-They do not constitute prospective candidate screening, uncertainty
-calibration or evidence of electrochemical device performance.
+`prepare_inputs.py` provides conversion helpers for evaluated split outputs.
+Keep the CSV source catalog and figure-source map synchronized when refreshing
+the released numerical results.
